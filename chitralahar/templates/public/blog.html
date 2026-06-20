@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Blog — {{ site.site_title }}{% endblock %}
+
+{% block content %}
+<section class="page-intro wrap">
+  <h1 class="page-title">Journal</h1>
+  <p class="page-sub">Notes, stories, and behind the frame.</p>
+</section>
+
+<div class="wrap">
+{% if posts %}
+  <div class="post-list">
+    {% for post in posts %}
+    <article class="post-card">
+      {% if post.cover_filename %}
+      <a class="post-card-cover" href="{{ url_for('public.post', slug=post.slug) }}">
+        <img src="{{ url_for('static', filename='uploads/misc/' ~ post.cover_filename) }}"
+             alt="{{ post.title }}" loading="lazy">
+      </a>
+      {% endif %}
+      <div class="post-card-body">
+        <p class="post-card-date">{{ (post.published_at or post.created_at) | dateformat }}</p>
+        <h2 class="post-card-title">
+          <a href="{{ url_for('public.post', slug=post.slug) }}">{{ post.title }}</a>
+        </h2>
+        {% if post.excerpt %}<p class="post-card-excerpt">{{ post.excerpt }}</p>{% endif %}
+        <a class="readmore" href="{{ url_for('public.post', slug=post.slug) }}">Read more &rsaquo;</a>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">
+    <p class="empty-title">No posts yet.</p>
+    {% if current_user %}
+      <p>Write your first entry in the <a href="{{ url_for('admin.post_new') }}">admin</a>.</p>
+    {% else %}
+      <p>Stories are on the way.</p>
+    {% endif %}
+  </div>
+{% endif %}
+</div>
+{% endblock %}

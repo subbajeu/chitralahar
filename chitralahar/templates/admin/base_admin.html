@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Admin{% endblock %} · {{ site.site_title }} admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  {% if site.favicon %}
+  <link rel="icon" href="{{ url_for('static', filename='uploads/misc/' ~ site.favicon) }}">
+  {% else %}
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231a1814'/><circle cx='16' cy='16' r='7' fill='none' stroke='%23fff' stroke-width='2'/><circle cx='16' cy='16' r='2' fill='%23fff'/></svg>">
+  {% endif %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body class="admin">
+  <div class="admin-shell">
+    <aside class="admin-side">
+      <a class="admin-brand" href="{{ url_for('admin.dashboard') }}">
+        <span class="admin-brand-mark">Chitralahar</span>
+        <span class="admin-brand-sub">{{ site.site_title }}</span>
+      </a>
+      <nav class="admin-nav">
+        {% set ep = request.endpoint %}
+        <a href="{{ url_for('admin.dashboard') }}" class="{{ 'is-active' if ep == 'admin.dashboard' }}">Dashboard</a>
+        <a href="{{ url_for('admin.home_settings') }}" class="{{ 'is-active' if ep == 'admin.home_settings' }}">Home page</a>
+        <a href="{{ url_for('admin.photos') }}" class="{{ 'is-active' if ep in ['admin.photos', 'admin.photo_edit'] }}">Photos</a>
+        <a href="{{ url_for('admin.categories') }}" class="{{ 'is-active' if ep == 'admin.categories' }}">Categories</a>
+        <a href="{{ url_for('admin.posts') }}" class="{{ 'is-active' if ep in ['admin.posts', 'admin.post_new', 'admin.post_edit'] }}">Blog posts</a>
+        <a href="{{ url_for('admin.about_edit') }}" class="{{ 'is-active' if ep == 'admin.about_edit' }}">About page</a>
+        <a href="{{ url_for('admin.contact_edit') }}" class="{{ 'is-active' if ep == 'admin.contact_edit' }}">Contact page</a>
+        <a href="{{ url_for('admin.menu') }}" class="{{ 'is-active' if ep == 'admin.menu' }}">Menu</a>
+        <a href="{{ url_for('admin.templates') }}" class="{{ 'is-active' if ep == 'admin.templates' }}">Templates</a>
+        <a href="{{ url_for('admin.settings') }}" class="{{ 'is-active' if ep == 'admin.settings' }}">Settings</a>
+      </nav>
+      <div class="admin-side-foot">
+        <a href="{{ url_for('public.home') }}" target="_blank" rel="noopener">View site &nearr;</a>
+        <form method="post" action="{{ url_for('auth.logout') }}">
+          <button type="submit" class="linklike">Sign out</button>
+        </form>
+      </div>
+    </aside>
+
+    <div class="admin-content">
+      <header class="admin-topbar">
+        <h1 class="admin-page-title">{% block page_title %}{% endblock %}</h1>
+        <div class="admin-top-actions">{% block actions %}{% endblock %}</div>
+      </header>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-stack">
+            {% for category, message in messages %}
+              <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <div class="admin-main">
+        {% block content %}{% endblock %}
+      </div>
+    </div>
+  </div>
+  <script src="{{ url_for('static', filename='js/admin.js') }}" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

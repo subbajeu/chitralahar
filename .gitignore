@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Instance data (database, secret key)
+instance/
+
+# Uploaded media (keep the folders, ignore the files)
+chitralahar/static/uploads/photos/*
+chitralahar/static/uploads/thumbs/*
+chitralahar/static/uploads/misc/*
+!chitralahar/static/uploads/photos/.gitkeep
+!chitralahar/static/uploads/thumbs/.gitkeep
+!chitralahar/static/uploads/misc/.gitkeep
+
+# Watermark cache (regenerated on demand)
+chitralahar/static/uploads/wm/
+
+# Kept originals (your photos — local data, not source)
+chitralahar/static/uploads/originals/*
+!chitralahar/static/uploads/originals/.gitkeep
+
+# Watermark fonts: drop your own .ttf/.otf here. OS fonts are not redistributable,
+# so the font files themselves are not committed (keep the folder + docs).
+chitralahar/static/fonts/*
+!chitralahar/static/fonts/.gitkeep
+!chitralahar/static/fonts/README.txt
+
+# Env
+.env
+
+# OS
+.DS_Store

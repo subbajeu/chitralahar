@@ -1,0 +1,19 @@
+{% extends "admin/auth.html" %}
+{% block title %}Create admin account{% endblock %}
+{% block content %}
+<h1 class="auth-title">Welcome</h1>
+<p class="auth-intro">Create your administrator account to start managing your portfolio.</p>
+<form method="post" class="auth-form" novalidate>
+  <label>Username
+    <input type="text" name="username" autocomplete="username" required autofocus>
+  </label>
+  <label>Password
+    <input type="password" name="password" autocomplete="new-password" required minlength="8">
+  </label>
+  <label>Confirm password
+    <input type="password" name="confirm" autocomplete="new-password" required minlength="8">
+  </label>
+  <p class="auth-hint">Use at least 8 characters.</p>
+  <button type="submit" class="btn btn-primary btn-block">Create account</button>
+</form>
+{% endblock %}

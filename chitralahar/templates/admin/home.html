@@ -1,0 +1,59 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Home page{% endblock %}
+{% block page_title %}Home page{% endblock %}
+{% block actions %}<a href="{{ url_for('public.home') }}" target="_blank" rel="noopener" class="btn btn-ghost">View site &nearr;</a>{% endblock %}
+
+{% block content %}
+<form method="post" class="form-stack settings-form" enctype="multipart/form-data">
+  <div class="field-group">
+    <h2>Intro</h2>
+    <label>Heading
+      <input type="text" name="home_heading" value="{{ values.home_heading }}" placeholder="Selected Work">
+    </label>
+    <label>Intro text
+      <textarea name="home_intro" rows="3" placeholder="Optional — a short line shown under the heading.">{{ values.home_intro }}</textarea>
+    </label>
+  </div>
+
+  <div class="field-group">
+    <h2>Hero image</h2>
+    <div class="brand-field">
+      {% if values.home_hero %}
+      <span class="brand-preview brand-preview-wide"><img src="{{ url_for('static', filename='uploads/misc/' ~ values.home_hero) }}" alt="Hero"></span>
+      <label class="checkbox small-check"><input type="checkbox" name="remove_home_hero"><span>Remove hero image</span></label>
+      {% endif %}
+      <input type="file" name="home_hero" accept="image/*">
+      <p class="muted small">Optional — a wide banner shown across the top of the home page.</p>
+    </div>
+  </div>
+
+  <div class="field-group">
+    <h2>What the gallery shows</h2>
+    <label class="radio-row">
+      <input type="radio" name="home_show" value="all" {{ 'checked' if values.home_show != 'featured' and values.home_show != 'category' }}>
+      <span><strong>All photos</strong> — every published photo.</span>
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="home_show" value="featured" {{ 'checked' if values.home_show == 'featured' }}>
+      <span><strong>Featured only</strong> — just the photos you star (★).
+        <em class="muted">{{ featured_count }} photo{{ 's' if featured_count != 1 }} currently featured.</em></span>
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="home_show" value="category" {{ 'checked' if values.home_show == 'category' }}>
+      <span><strong>One category</strong> — show a single category as the landing gallery.</span>
+    </label>
+    <label class="indent">Category
+      <select name="home_category">
+        <option value="">— Choose a category —</option>
+        {% for c in categories %}
+        <option value="{{ c.id }}" {{ 'selected' if values.home_category == c.id|string }}>{{ c.name }}{{ ' (hidden)' if not c.published }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Save home page</button>
+  </div>
+</form>
+{% endblock %}

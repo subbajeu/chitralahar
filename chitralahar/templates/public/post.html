@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ post.title }} — {{ site.site_title }}{% endblock %}
+{% block description %}{{ post.excerpt }}{% endblock %}
+
+{% block content %}
+<article class="article">
+  <header class="article-head wrap-read">
+    <p class="article-date">{{ (post.published_at or post.created_at) | dateformat }}</p>
+    <h1 class="article-title">{{ post.title }}</h1>
+    {% if post.excerpt %}<p class="article-lede">{{ post.excerpt }}</p>{% endif %}
+  </header>
+
+  {% if post.cover_filename %}
+  <figure class="article-cover wrap">
+    <img src="{{ url_for('static', filename='uploads/misc/' ~ post.cover_filename) }}" alt="{{ post.title }}">
+  </figure>
+  {% endif %}
+
+  <div class="article-body prose wrap-read">
+    {{ post.body | clean_html }}
+  </div>
+
+  <footer class="article-foot wrap-read">
+    <a href="{{ url_for('public.blog') }}" class="back-link">&lsaquo; All posts</a>
+  </footer>
+</article>
+{% endblock %}

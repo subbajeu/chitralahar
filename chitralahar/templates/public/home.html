@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}{% if active_cat %}{{ active_cat.name }} — {% endif %}{{ site.site_title }} — {{ site.tagline }}{% endblock %}
+
+{% block content %}
+{% if not active_cat and not active_sub %}
+  {% if slides %}
+  <section class="home-slider" id="homeSlider" aria-label="Featured photos" aria-roledescription="carousel">
+    <div class="slider-track">
+      {% for p in slides %}
+      <a class="slide {{ 'is-active' if loop.first }}" href="{{ url_for('public.photo', photo_id=p.id) }}">
+        <img src="{{ url_for('static', filename='uploads/photos/' ~ p.filename) }}"
+             alt="{{ p.title or 'Featured photograph' }}"
+             loading="{{ 'eager' if loop.first else 'lazy' }}">
+        {% if p.title or p.caption %}
+        <span class="slide-cap">{% if p.title %}<strong>{{ p.title }}</strong>{% endif %}{% if p.caption %}<span class="slide-sub">{{ p.caption }}</span>{% endif %}</span>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+    {% if slides|length > 1 %}
+    <button class="slider-btn slider-prev" type="button" aria-label="Previous photo">&lsaquo;</button>
+    <button class="slider-btn slider-next" type="button" aria-label="Next photo">&rsaquo;</button>
+    <div class="slider-dots">
+      {% for p in slides %}<button class="slider-dot {{ 'is-active' if loop.first }}" type="button" aria-label="Go to photo {{ loop.index }}"></button>{% endfor %}
+    </div>
+    {% endif %}
+  </section>
+  {% elif site.home_hero %}
+  <section class="home-hero">
+    <img src="{{ url_for('static', filename='uploads/misc/' ~ site.home_hero) }}" alt="{{ site.site_title }}">
+  </section>
+  {% endif %}
+{% endif %}
+
+<section class="page-intro wrap">
+  <h1 class="page-title">{% if active_cat %}{{ active_cat.name }}{% else %}{{ site.home_heading or "Selected Work" }}{% endif %}</h1>
+  {% if active_sub %}<p class="page-sub">{{ active_sub.name }}</p>
+  {% elif active_cat and active_cat.description %}<p class="page-sub">{{ active_cat.description }}</p>
+  {% elif not active_cat and site.home_intro %}<p class="page-sub home-intro">{{ site.home_intro }}</p>
+  {% elif site.tagline %}<p class="page-sub">{{ site.tagline }}</p>{% endif %}
+
+  {% if categories %}
+  <nav class="filter-bar" aria-label="Categories">
+    <a href="{{ url_for('public.home') }}" class="filter {{ 'is-active' if not active_cat }}">All</a>
+    {% for c in categories %}
+      <a href="{{ url_for('public.category', slug=c.slug) }}" class="filter {{ 'is-active' if active_cat and active_cat.id == c.id }}">{{ c.name }}</a>
+    {% endfor %}
+  </nav>
+  {% endif %}
+
+  {% if active_cat and subcategories %}
+  <nav class="filter-bar subfilter-bar" aria-label="Subcategories">
+    <a href="{{ url_for('public.category', slug=active_cat.slug) }}" class="filter {{ 'is-active' if not active_sub }}">All {{ active_cat.name }}</a>
+    {% for s in subcategories %}
+      <a href="{{ url_for('public.subcategory', slug=active_cat.slug, subslug=s.slug) }}" class="filter {{ 'is-active' if active_sub and active_sub.id == s.id }}">{{ s.name }}</a>
+    {% endfor %}
+  </nav>
+  {% endif %}
+</section>
+
+{% if photos %}
+<div class="wrap">
+  <div class="gallery" id="gallery">
+    {% for p in photos %}
+    {% set ar = (p.width / p.height) if (p.width and p.height) else 1.4 %}
+    {% if loop.index0 % 7 == 0 and ar >= 1.2 %}{% set tile = 'is-big' %}
+    {% elif ar <= 0.8 %}{% set tile = 'is-tall' %}
+    {% elif ar >= 1.4 %}{% set tile = 'is-wide' %}
+    {% else %}{% set tile = '' %}{% endif %}
+    <figure class="g-item {{ tile }}">
+      <a href="{{ url_for('public.photo', photo_id=p.id) }}"
+         class="g-link"
+         data-full="{{ url_for('public.image', photo_id=p.id, kind='full') if site.watermark_enabled else url_for('static', filename='uploads/photos/' ~ p.filename) }}"
+         data-cap="{{ (p.title ~ ('  ·  ' ~ p.caption if p.caption else '')) if p.title else p.caption }}">
+        <img src="{{ url_for('public.image', photo_id=p.id, kind='thumb') if site.watermark_enabled else url_for('static', filename='uploads/thumbs/' ~ p.thumb_filename) }}"
+             alt="{{ p.title or 'Photograph' }}"
+             width="{{ p.width or 800 }}" height="{{ p.height or 600 }}"
+             loading="lazy">
+        {% if p.title %}<figcaption class="g-cap">{{ p.title }}</figcaption>{% endif %}
+      </a>
+    </figure>
+    {% endfor %}
+    <i class="g-fill" aria-hidden="true"></i>
+  </div>
+</div>
+{% else %}
+<div class="wrap empty-state">
+  <p class="empty-title">{% if active_cat %}Nothing here yet.{% else %}No photographs yet.{% endif %}</p>
+  {% if current_user %}
+    <p>Head to the <a href="{{ url_for('admin.photos') }}">admin gallery</a> to upload and organize your images.</p>
+  {% else %}
+    <p>Check back soon.</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

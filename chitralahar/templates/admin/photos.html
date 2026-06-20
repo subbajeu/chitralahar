@@ -1,0 +1,144 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Photos{% endblock %}
+{% block page_title %}Photos{% endblock %}
+
+{% block content %}
+<form class="dropzone" id="dropzone" method="post"
+      action="{{ url_for('admin.photos_upload') }}" enctype="multipart/form-data">
+  <input type="file" name="photos" id="fileInput" accept="image/*" multiple hidden>
+  <div class="dz-controls">
+    <span class="dz-controls-label muted small">Assign this batch (optional):</span>
+    {% if categories %}
+    <select name="category_id" id="upCat">
+      <option value="">— Uncategorized —</option>
+      {% for c in categories %}
+      <option value="{{ c.id }}">{{ c.name }}{{ ' (hidden)' if not c.published }}</option>
+      {% endfor %}
+    </select>
+    <select name="subcategory_id" id="upSub" data-subselect="upCat" data-current="">
+      <option value="">— None —</option>
+    </select>
+    {% endif %}
+    <input type="text" name="tags" class="dz-tags" placeholder="Tags (comma-separated)">
+  </div>
+  <div class="dropzone-inner">
+    <p class="dropzone-title">Drop photos here</p>
+    <p class="dropzone-sub">or <button type="button" class="linklike" id="browseBtn">browse your files</button> · JPG, PNG, WebP, TIFF</p>
+  </div>
+  <div class="dropzone-status" id="dzStatus" hidden></div>
+</form>
+
+<div class="photos-layout {{ 'no-tree' if not browse_cats }}">
+  {% if browse_cats %}
+  <aside class="photo-tree" aria-label="Browse photos by category">
+    <a href="{{ url_for('admin.photos') }}" class="tree-row tree-top {{ 'is-active' if not (active.cat or active.sub or active.uncat) }}">
+      <span class="tree-name">All photos</span><span class="tree-count">{{ total }}</span>
+    </a>
+    <a href="{{ url_for('admin.photos', uncat=1) }}" class="tree-row tree-top assign-target {{ 'is-active' if active.uncat }}" data-assign-clear>
+      <span class="tree-name">Uncategorized</span><span class="tree-count">{{ uncat_count }}</span>
+    </a>
+    {% for c in browse_cats %}
+    {% set subs = browse_subs.get(c.id, []) %}
+    {% set subids = subs | map(attribute='id') | list %}
+    <div class="tree-cat {{ 'open' if active.cat == c.id or active.sub in subids }}">
+      <div class="tree-row tree-catrow {{ 'is-active' if active.cat == c.id }}">
+        {% if subs %}<button type="button" class="tree-toggle" aria-label="Expand {{ c.name }}">▸</button>{% else %}<span class="tree-spacer"></span>{% endif %}
+        <a href="{{ url_for('admin.photos', cat=c.id) }}" class="tree-link assign-target" data-assign-cat="{{ c.id }}">
+          <span class="tree-name">{{ c.name }}{% if c.private %} 🔒{% endif %}</span><span class="tree-count">{{ c.photo_count }}</span>
+        </a>
+      </div>
+      {% if subs %}
+      <div class="tree-subs">
+        {% for s in subs %}
+        <a href="{{ url_for('admin.photos', sub=s.id) }}" class="tree-row tree-sub assign-target {{ 'is-active' if active.sub == s.id }}" data-assign-cat="{{ c.id }}" data-assign-sub="{{ s.id }}">
+          <span class="tree-name">{{ s.name }}</span><span class="tree-count">{{ s.photo_count }}</span>
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </aside>
+  {% endif %}
+
+  <div class="photos-main">
+    {% if browse_cats %}
+    <div class="sel-bar" id="selBar" hidden>
+      <span class="sel-count" id="selCount">0 selected</span>
+      <label class="sel-assign">Assign to
+        <select id="selAssign">
+          <option value="">— choose —</option>
+          <option value="clear">Uncategorized</option>
+          {% for c in categories %}
+          <option value="cat:{{ c.id }}">{{ c.name }}</option>
+          {% for s in subcat_map.get(c.id, []) %}
+          <option value="sub:{{ s.id }}">{{ c.name }} › {{ s.name }}</option>
+          {% endfor %}
+          {% endfor %}
+        </select>
+      </label>
+      <button type="button" class="linklike" id="selClear">Clear</button>
+    </div>
+    {% endif %}
+
+    {% if photos %}
+    <p class="reorder-hint muted small">Click photos to select · drag onto a category in the tree to file · drag to reorder · ★ feature · eye shows/hides.</p>
+    <div class="photo-grid" id="photoGrid" data-reorder-url="{{ url_for('admin.photos_reorder') }}" data-drag-item=".photo-tile" data-drag-kind="photo" data-reorder-lock="{{ '1' if filtered else '0' }}">
+      {% for p in photos %}
+      <div class="photo-tile {{ 'is-hidden' if not p.published }}" draggable="true" data-id="{{ p.id }}">
+        <div class="photo-tile-img">
+          <img src="{{ url_for('static', filename='uploads/thumbs/' ~ p.thumb_filename) }}" alt="{{ p.title or p.orig_name }}">
+          <span class="sel-tick" aria-hidden="true">✓</span>
+          <span class="tile-tools">
+            <button class="toggle-btn star-btn {{ 'is-on' if p.featured }}" type="button"
+                    data-toggle-url="{{ url_for('admin.photo_toggle_featured', photo_id=p.id) }}"
+                    aria-label="Toggle featured" title="Feature on home">★</button>
+            <button class="toggle-btn publish-btn {{ 'is-on' if p.published }}" type="button"
+                    data-toggle-url="{{ url_for('admin.photo_toggle_published', photo_id=p.id) }}"
+                    aria-label="Toggle published" title="Show on site">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </span>
+          <span class="drag-grip" title="Drag to reorder">⠿</span>
+          {% if not p.published %}<span class="hidden-flag">Hidden</span>{% endif %}
+        </div>
+        <div class="photo-tile-bar">
+          <div class="photo-tile-meta">
+            <span class="photo-tile-name">{{ p.title or 'Untitled' }}</span>
+            <span class="photo-tile-cat muted small">
+              {%- if p.category_name %}{{ p.category_name }}{% if p.subcategory_name %} · {{ p.subcategory_name }}{% endif %}
+              {%- else %}Uncategorized{% endif -%}
+            </span>
+          </div>
+          <span class="photo-tile-actions">
+            <a href="{{ url_for('admin.photo_edit', photo_id=p.id) }}">Edit</a>
+            <form method="post" action="{{ url_for('admin.photo_delete', photo_id=p.id) }}"
+                  class="js-confirm inline" data-confirm="Delete this photo permanently?">
+              <button type="submit" class="linklike danger">Delete</button>
+            </form>
+          </span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state admin-empty">
+      {% if filtered %}
+      <p class="empty-title">No photos in this view</p>
+      <p class="muted"><a href="{{ url_for('admin.photos') }}">Show all photos</a></p>
+      {% else %}
+      <p class="empty-title">No photos yet</p>
+      <p class="muted">Drop some images above to build your gallery.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.CHITRALAHAR_SUBS = {{ subcat_map | tojson }};
+  window.CHITRALAHAR_ASSIGN_URL = "{{ url_for('admin.photos_assign') }}";
+</script>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Edit photo{% endblock %}
+{% block page_title %}Edit photo{% endblock %}
+{% block actions %}<a href="{{ url_for('admin.photos') }}" class="btn btn-ghost">&lsaquo; Back to photos</a>{% endblock %}
+
+{% block content %}
+<div class="edit-split">
+  <div class="edit-preview">
+    <img src="{{ url_for('static', filename='uploads/photos/' ~ photo.filename) }}" alt="{{ photo.title }}">
+    <p class="muted small">{{ photo.width }}×{{ photo.height }} · {{ photo.orig_name }}</p>
+  </div>
+
+  <form method="post" class="form-stack edit-form">
+    <label>Title
+      <input type="text" name="title" value="{{ photo.title }}" placeholder="Untitled">
+    </label>
+    <label>Caption
+      <textarea name="caption" rows="3" placeholder="A short description shown in the lightbox.">{{ photo.caption }}</textarea>
+    </label>
+    <label>Tags
+      <input type="text" name="tags" value="{{ tags }}" placeholder="Comma-separated, e.g. portrait, outdoor, golden hour">
+    </label>
+    <div class="field-row">
+      <label>Category
+        <select name="category_id" id="catSelect">
+          <option value="">— Uncategorized —</option>
+          {% for c in categories %}
+          <option value="{{ c.id }}" {{ 'selected' if photo.category_id == c.id }}>{{ c.name }}{{ ' (hidden)' if not c.published }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Subcategory
+        <select name="subcategory_id" id="subSelect" data-subselect="catSelect" data-current="{{ photo.subcategory_id or '' }}">
+          <option value="">— None —</option>
+        </select>
+      </label>
+    </div>
+    <label class="checkbox">
+      <input type="checkbox" name="published" {{ 'checked' if photo.published }}>
+      <span>Published (visible on the site)</span>
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="featured" {{ 'checked' if photo.featured }}>
+      <span>Feature on home</span>
+    </label>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save changes</button>
+      <a href="{{ url_for('admin.photos') }}" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<form method="post" action="{{ url_for('admin.photo_delete', photo_id=photo.id) }}"
+      class="js-confirm danger-zone" data-confirm="Delete this photo permanently?">
+  <span>Delete this photo and its files.</span>
+  <button type="submit" class="btn btn-danger">Delete photo</button>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>window.CHITRALAHAR_SUBS = {{ subcat_map | tojson }};</script>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Templates{% endblock %}
+{% block page_title %}Templates{% endblock %}
+
+{% block content %}
+<p class="muted templates-intro">Choose how your public portfolio looks. The change applies instantly across your whole site — your photos, categories, and content stay exactly the same.</p>
+
+<div class="template-grid">
+  {% for tid, t in templates.items() %}
+  <form method="post" class="template-card {{ 'is-current' if tid == current }}">
+    <input type="hidden" name="template" value="{{ tid }}">
+    <div class="tpl-preview" data-template="{{ tid }}" aria-hidden="true">
+      <div class="tpl-bar"><span class="tpl-mark"></span><span class="tpl-links"></span></div>
+      <div class="tpl-stage">
+        <span></span><span></span><span></span>
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+    <div class="template-meta">
+      <div class="template-name">{{ t.name }}{% if tid == current %} <span class="badge badge-on">Active</span>{% endif %}</div>
+      <p class="template-blurb muted small">{{ t.blurb }}</p>
+    </div>
+    <button type="submit" class="btn btn-block {{ 'btn-ghost' if tid == current else 'btn-primary' }}" {{ 'disabled' if tid == current }}>
+      {{ 'Current template' if tid == current else 'Use this template' }}
+    </button>
+  </form>
+  {% endfor %}
+</div>
+{% endblock %}

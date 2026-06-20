@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ cat.name }} — Private{% endblock %}
+
+{% block content %}
+<div class="wrap lock-wrap">
+  <div class="lock-card">
+    <p class="private-tag">Private gallery</p>
+    <h1 class="lock-title">{{ cat.name }}</h1>
+    <p class="muted-text">This gallery is private. Enter the passphrase to view it.</p>
+    <form method="post" class="lock-form">
+      <input type="password" name="passkey" placeholder="Passphrase" autocomplete="off" autofocus required>
+      <button type="submit" class="btn btn-primary btn-block">View gallery</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

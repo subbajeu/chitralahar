@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ page.title or "Contact" }} — {{ site.site_title }}{% endblock %}
+
+{% block content %}
+<article class="about wrap-read">
+  <h1 class="article-title about-title">{{ page.title or "Contact" }}</h1>
+
+  {% if page and page.image_filename %}
+  <figure class="about-portrait">
+    <img src="{{ url_for('static', filename='uploads/misc/' ~ page.image_filename) }}" alt="">
+  </figure>
+  {% endif %}
+
+  <div class="prose about-body">
+    {{ (page.body if page else "") | clean_html }}
+  </div>
+
+  {% if site.email or site.instagram or site.twitter or site.facebook %}
+  <div class="about-contact">
+    {% if site.email %}<a href="mailto:{{ site.email }}">{{ site.email }}</a>{% endif %}
+    {% if site.instagram %}<a href="{{ site.instagram }}" target="_blank" rel="noopener">Instagram</a>{% endif %}
+    {% if site.twitter %}<a href="{{ site.twitter }}" target="_blank" rel="noopener">Twitter</a>{% endif %}
+    {% if site.facebook %}<a href="{{ site.facebook }}" target="_blank" rel="noopener">Facebook</a>{% endif %}
+  </div>
+  {% endif %}
+</article>
+{% endblock %}

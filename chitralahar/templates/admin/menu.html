@@ -1,0 +1,124 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Menu{% endblock %}
+{% block page_title %}Menu{% endblock %}
+
+{% macro mform(action, item, parent_id, categories) %}
+<form method="post" action="{{ action }}" class="menu-form" data-menu-form>
+  {% if parent_id %}<input type="hidden" name="parent_id" value="{{ parent_id }}">{% endif %}
+  <input type="text" name="label" value="{{ item.label if item else '' }}" placeholder="Label" class="menu-label">
+  <select name="link_type" class="menu-type">
+    <option value="home" {{ 'selected' if item and item.link_type == 'home' }}>Home (Work)</option>
+    <option value="blog" {{ 'selected' if item and item.link_type == 'blog' }}>Blog</option>
+    <option value="about" {{ 'selected' if item and item.link_type == 'about' }}>About</option>
+    <option value="category" {{ 'selected' if item and item.link_type == 'category' }}>Category</option>
+    <option value="subcategory" {{ 'selected' if item and item.link_type == 'subcategory' }}>Subcategory</option>
+    <option value="url" {{ 'selected' if item and item.link_type == 'url' }}>Custom URL</option>
+  </select>
+  <span data-when="category subcategory" hidden>
+    <select name="category_id">
+      <option value="">— Category —</option>
+      {% for c in categories %}<option value="{{ c.id }}" {{ 'selected' if item and item.category_id == c.id }}>{{ c.name }}</option>{% endfor %}
+    </select>
+  </span>
+  <span data-when="subcategory" hidden>
+    <select name="subcategory_id" data-current="{{ item.subcategory_id if item else '' }}">
+      <option value="">— Subcategory —</option>
+    </select>
+  </span>
+  <span data-when="url" hidden>
+    <input type="text" name="url" value="{{ item.url if item else '' }}" placeholder="https://…">
+  </span>
+  <button type="submit" class="btn btn-sm btn-primary">{{ 'Save' if item else 'Add' }}</button>
+</form>
+{% endmacro %}
+
+{% block content %}
+<p class="muted templates-intro">Build the public navigation. Each item links to a section, a category/subcategory, or any URL. Nest items under another to create a dropdown. Drag <span class="grip-inline">⠿</span> to reorder; toggle Published to show or hide.</p>
+
+<div class="panel menu-add-panel">
+  <h2 class="menu-add-title">Add a menu item</h2>
+  {{ mform(url_for('admin.menu_create'), none, none, categories) }}
+</div>
+
+{% if tops %}
+<p class="reorder-hint muted small">Drag <span class="grip-inline">⠿</span> to reorder · drag a sub-item onto another item to nest it · or use Move.</p>
+{% if children %}<div class="promote-bar" data-drop-top="menu">⬆ Drop a sub-item here to make it top-level</div>{% endif %}
+<div class="cat-list" id="menuList" data-reorder-url="{{ url_for('admin.menu_reorder') }}" data-drag-item=".menu-card" data-drag-kind="menu-top">
+  {% for t in tops %}
+  <div class="cat-card menu-card {{ 'is-hidden' if not t.published }}" data-id="{{ t.id }}" data-drop-menu="{{ t.id }}" draggable="true">
+    <div class="cat-head">
+      <span class="drag-grip cat-grip" title="Drag to reorder">⠿</span>
+      <div class="cat-title">
+        <span class="cat-name">{{ t.label }}</span>
+        <span class="muted small">{{ descs[t.id] }}</span>
+      </div>
+      <div class="row-controls">
+        <button class="toggle-btn pill-toggle {{ 'is-on' if t.published }}" type="button"
+                data-toggle-url="{{ url_for('admin.menu_toggle_publish', item_id=t.id) }}"
+                data-on-text="Published" data-off-text="Hidden">{{ 'Published' if t.published else 'Hidden' }}</button>
+        <details class="row-edit" draggable="false"><summary>Edit</summary>{{ mform(url_for('admin.menu_edit', item_id=t.id), t, none, categories) }}</details>
+        {% if tops|length > 1 %}
+        <details class="row-edit" draggable="false"><summary>Move</summary>
+          <form method="post" action="{{ url_for('admin.menu_move', item_id=t.id) }}" class="row-edit-form">
+            <span class="side-label move-label">Nest “{{ t.label }}” under:</span>
+            <select name="parent">
+              <option value="top">— Top level —</option>
+              {% for o in tops if o.id != t.id %}<option value="{{ o.id }}">{{ o.label }}</option>{% endfor %}
+            </select>
+            <button type="submit" class="btn btn-sm btn-primary">Move</button>
+          </form>
+        </details>
+        {% endif %}
+        <form method="post" action="{{ url_for('admin.menu_delete', item_id=t.id) }}"
+              class="js-confirm inline" data-confirm="Delete “{{ t.label }}”? Any items nested under it are removed too.">
+          <button type="submit" class="linklike danger">Delete</button>
+        </form>
+      </div>
+    </div>
+    <div class="sub-list" data-reorder-url="{{ url_for('admin.menu_reorder') }}" data-drag-item=".menu-row" data-drag-kind="menu-child">
+      {% for ch in children.get(t.id, []) %}
+      <div class="sub-row menu-row {{ 'is-hidden' if not ch.published }}" data-id="{{ ch.id }}" data-parent="{{ t.id }}" draggable="true">
+        <span class="drag-grip sub-grip" title="Drag to reorder">⠿</span>
+        <span class="sub-name">{{ ch.label }}</span>
+        <span class="muted small">{{ descs[ch.id] }}</span>
+        <span class="row-controls">
+          <button class="toggle-btn pill-toggle {{ 'is-on' if ch.published }}" type="button"
+                  data-toggle-url="{{ url_for('admin.menu_toggle_publish', item_id=ch.id) }}"
+                  data-on-text="Published" data-off-text="Hidden">{{ 'Published' if ch.published else 'Hidden' }}</button>
+          <details class="row-edit" draggable="false"><summary>Edit</summary>{{ mform(url_for('admin.menu_edit', item_id=ch.id), ch, none, categories) }}</details>
+          <details class="row-edit" draggable="false"><summary>Move</summary>
+            <form method="post" action="{{ url_for('admin.menu_move', item_id=ch.id) }}" class="row-edit-form">
+              <span class="side-label move-label">Move “{{ ch.label }}” to:</span>
+              <select name="parent">
+                <option value="top">— Top level —</option>
+                {% for o in tops %}<option value="{{ o.id }}" {{ 'selected' if o.id == t.id }}>{{ o.label }}</option>{% endfor %}
+              </select>
+              <button type="submit" class="btn btn-sm btn-primary">Move</button>
+            </form>
+          </details>
+          <form method="post" action="{{ url_for('admin.menu_delete', item_id=ch.id) }}"
+                class="js-confirm inline" data-confirm="Delete “{{ ch.label }}”?">
+            <button type="submit" class="linklike danger">Delete</button>
+          </form>
+        </span>
+      </div>
+      {% endfor %}
+      <details class="row-edit menu-child-add" draggable="false"><summary>+ Add dropdown item</summary>{{ mform(url_for('admin.menu_create'), none, t.id, categories) }}</details>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state admin-empty">
+  <p class="empty-title">No menu items</p>
+  <p class="muted">Add your first navigation item above.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.CHITRALAHAR_SUBS = {{ subcat_map | tojson }};
+  window.CHITRALAHAR_MENUMOVE_URL = "{{ url_for('admin.menu_move', item_id=0) }}";
+</script>
+{% endblock %}

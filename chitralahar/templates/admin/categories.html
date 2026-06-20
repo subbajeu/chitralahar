@@ -1,0 +1,188 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Categories{% endblock %}
+{% block page_title %}Categories{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ url_for('admin.category_create') }}" class="cat-new">
+  <input type="text" name="name" placeholder="New category name" required>
+  <input type="text" name="description" placeholder="Description (optional)" class="cat-new-desc">
+  <button type="submit" class="btn btn-primary">Add category</button>
+</form>
+
+{% if categories %}
+{% set has_subs = subs_by_cat|length > 0 %}
+<p class="reorder-hint muted small">Drag <span class="grip-inline">⠿</span> to reorder · drag a subcategory onto another category to move it there · toggle Published to show/hide.</p>
+{% if has_subs %}<div class="promote-bar" data-drop-top="cat">⬆ Drop a subcategory here to make it its own top-level category</div>{% endif %}
+<div class="cat-list" id="categoryList" data-reorder-url="{{ url_for('admin.categories_reorder') }}" data-drag-item=".cat-card" data-drag-kind="cat">
+  {% for c in categories %}
+  <div class="cat-card {{ 'is-hidden' if not c.published }}" data-id="{{ c.id }}" data-drop-cat="{{ c.id }}" draggable="true">
+    <div class="cat-head">
+      <span class="drag-grip cat-grip" title="Drag to reorder">⠿</span>
+      <div class="cat-title">
+        <span class="cat-name">{{ c.name }}{% if c.private %} <span class="badge badge-private">Private</span>{% endif %}</span>
+        <span class="muted small">{{ c.photo_count }} photo{{ 's' if c.photo_count != 1 }} · {{ c.sub_count }} subcategor{{ 'y' if c.sub_count == 1 else 'ies' }} · /{{ c.slug }}</span>
+      </div>
+      <div class="row-controls">
+        <button class="toggle-btn pill-toggle {{ 'is-on' if c.published }}" type="button"
+                data-toggle-url="{{ url_for('admin.category_toggle_publish', cat_id=c.id) }}"
+                data-on-text="Published" data-off-text="Hidden"
+                title="Show this category on your site">{{ 'Published' if c.published else 'Hidden' }}</button>
+        <details class="row-edit" draggable="false">
+          <summary>Edit</summary>
+          <form method="post" action="{{ url_for('admin.category_edit', cat_id=c.id) }}" class="row-edit-form">
+            <span class="move-label">Edit “{{ c.name }}”</span>
+            <input type="text" name="name" value="{{ c.name }}" aria-label="Category name" placeholder="Category name">
+            <input type="text" name="description" value="{{ c.description }}" placeholder="Description (optional)">
+            <button type="submit" class="btn btn-sm btn-primary">Save</button>
+          </form>
+        </details>
+        <details class="row-edit" draggable="false">
+          <summary>Share</summary>
+          <form method="post" action="{{ url_for('admin.category_share', cat_id=c.id) }}" class="row-edit-form">
+            <span class="move-label">Share “{{ c.name }}” as a private album</span>
+            <label class="checkbox small-check modal-full">
+              <input type="checkbox" name="private" {{ 'checked' if c.private }}>
+              <span>Private album — hidden from your public site; viewable only via the link</span>
+            </label>
+            {% if c.private and c.share_token %}
+            <div class="modal-full">
+              <span class="side-label">Share link</span>
+              <div class="share-copy">
+                <input type="text" class="share-link" readonly value="{{ url_for('public.private_gallery', token=c.share_token, _external=True) }}">
+                <button type="button" class="btn btn-sm copy-btn" data-copy>Copy</button>
+              </div>
+            </div>
+            {% elif c.private %}
+            <p class="muted small modal-full">Save to generate the share link.</p>
+            {% else %}
+            <p class="muted small modal-full">Turn on “Private album”, then Save to get a shareable link.</p>
+            {% endif %}
+            <div class="modal-full">
+              <span class="side-label">Passphrase {% if c.passkey %}<em>(set)</em>{% endif %}</span>
+              <input type="text" name="passkey" placeholder="{{ 'Type a new passphrase to change it' if c.passkey else 'Optional — leave blank to share without a passphrase' }}">
+              {% if c.passkey %}
+              <label class="checkbox small-check"><input type="checkbox" name="remove_passkey"><span>Remove passphrase (anyone with the link can view)</span></label>
+              {% endif %}
+            </div>
+            <label class="checkbox small-check modal-full"><input type="checkbox" name="allow_download" {{ 'checked' if c.allow_download or not c.share_token }}><span>Allow visitors to download the whole album (ZIP, full-resolution originals)</span></label>
+            <button type="submit" class="btn btn-sm btn-primary">Save share settings</button>
+          </form>
+        </details>
+        {% if categories|length > 1 %}
+        <details class="row-edit" draggable="false">
+          <summary>Move</summary>
+          <form method="post" action="{{ url_for('admin.category_move', cat_id=c.id) }}" class="row-edit-form">
+            <span class="side-label move-label">Make “{{ c.name }}” a subcategory of:</span>
+            <select name="target">
+              {% for o in categories if o.id != c.id %}<option value="cat:{{ o.id }}">{{ o.name }}</option>{% endfor %}
+            </select>
+            <button type="submit" class="btn btn-sm btn-primary">Move</button>
+          </form>
+        </details>
+        {% endif %}
+        <form method="post" action="{{ url_for('admin.category_delete', cat_id=c.id) }}"
+              class="js-confirm inline" data-confirm="Delete “{{ c.name }}”? Its subcategories are removed and their photos become uncategorized. Photos and files are kept.">
+          <button type="submit" class="linklike danger">Delete</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="sub-list" data-reorder-url="{{ url_for('admin.subcategories_reorder') }}" data-drag-item=".sub-row" data-drag-kind="sub">
+      {% for s in subs_by_cat.get(c.id, []) %}
+      <div class="sub-row {{ 'is-hidden' if not s.published }}" data-id="{{ s.id }}" data-parent="{{ c.id }}" draggable="true">
+        <span class="drag-grip sub-grip" title="Drag to reorder">⠿</span>
+        <span class="sub-name">{{ s.name }}{% if s.private %} <span class="badge badge-private">Private</span>{% endif %}</span>
+        <span class="muted small sub-count">{{ s.photo_count }} photo{{ 's' if s.photo_count != 1 }}</span>
+        {% if not c.published %}<span class="muted small">(parent hidden)</span>{% endif %}
+        <span class="row-controls">
+          <button class="toggle-btn pill-toggle {{ 'is-on' if s.published }}" type="button"
+                  data-toggle-url="{{ url_for('admin.subcategory_toggle_publish', sub_id=s.id) }}"
+                  data-on-text="Published" data-off-text="Hidden"
+                  title="Show this subcategory on your site">{{ 'Published' if s.published else 'Hidden' }}</button>
+          <details class="row-edit" draggable="false">
+            <summary>Edit</summary>
+            <form method="post" action="{{ url_for('admin.subcategory_edit', sub_id=s.id) }}" class="row-edit-form">
+              <input type="text" name="name" value="{{ s.name }}" aria-label="Subcategory name">
+              <input type="text" name="description" value="{{ s.description }}" placeholder="Description (optional)">
+              <button type="submit" class="btn btn-sm btn-primary">Save</button>
+            </form>
+          </details>
+          <details class="row-edit" draggable="false">
+            <summary>Share</summary>
+            <form method="post" action="{{ url_for('admin.subcategory_share', sub_id=s.id) }}" class="row-edit-form">
+              <span class="move-label">Share “{{ s.name }}” as a private album</span>
+              <label class="checkbox small-check modal-full">
+                <input type="checkbox" name="private" {{ 'checked' if s.private }}>
+                <span>Private album — hidden from your public site; viewable only via the link</span>
+              </label>
+              {% if s.private and s.share_token %}
+              <div class="modal-full">
+                <span class="side-label">Share link</span>
+                <div class="share-copy">
+                  <input type="text" class="share-link" readonly value="{{ url_for('public.private_gallery', token=s.share_token, _external=True) }}">
+                  <button type="button" class="btn btn-sm copy-btn" data-copy>Copy</button>
+                </div>
+              </div>
+              {% elif s.private %}
+              <p class="muted small modal-full">Save to generate the share link.</p>
+              {% else %}
+              <p class="muted small modal-full">Turn on “Private album”, then Save to get a shareable link.</p>
+              {% endif %}
+              <div class="modal-full">
+                <span class="side-label">Passphrase {% if s.passkey %}<em>(set)</em>{% endif %}</span>
+                <input type="text" name="passkey" placeholder="{{ 'Type a new passphrase to change it' if s.passkey else 'Optional — leave blank to share without a passphrase' }}">
+                {% if s.passkey %}
+                <label class="checkbox small-check"><input type="checkbox" name="remove_passkey"><span>Remove passphrase</span></label>
+                {% endif %}
+              </div>
+              <label class="checkbox small-check modal-full"><input type="checkbox" name="allow_download" {{ 'checked' if s.allow_download or not s.share_token }}><span>Allow visitors to download the whole album (ZIP, full-resolution originals)</span></label>
+              <button type="submit" class="btn btn-sm btn-primary">Save share settings</button>
+            </form>
+          </details>
+          {% if categories|length > 1 or subs_by_cat.get(c.id, [])|length %}
+          <details class="row-edit" draggable="false">
+            <summary>Move</summary>
+            <form method="post" action="{{ url_for('admin.subcategory_move', sub_id=s.id) }}" class="row-edit-form">
+              <span class="side-label move-label">Move “{{ s.name }}” to:</span>
+              <select name="target">
+                <option value="top">— Top level (own category) —</option>
+                {% for o in categories if o.id != c.id %}<option value="cat:{{ o.id }}">{{ o.name }}</option>{% endfor %}
+              </select>
+              <button type="submit" class="btn btn-sm btn-primary">Move</button>
+            </form>
+          </details>
+          {% endif %}
+          <form method="post" action="{{ url_for('admin.subcategory_delete', sub_id=s.id) }}"
+                class="js-confirm inline" data-confirm="Delete subcategory “{{ s.name }}”? Its photos move up to the parent category.">
+            <button type="submit" class="linklike danger">Delete</button>
+          </form>
+        </span>
+      </div>
+      {% endfor %}
+      <form method="post" action="{{ url_for('admin.subcategory_create') }}" class="sub-add">
+        <input type="hidden" name="category_id" value="{{ c.id }}">
+        <input type="text" name="name" placeholder="+ Add subcategory to {{ c.name }}">
+        <button type="submit" class="btn btn-sm">Add</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state admin-empty">
+  <p class="empty-title">No categories yet</p>
+  <p class="muted">Create your first category above to start organizing your photos.</p>
+</div>
+{% endif %}
+
+{% if uncategorized %}
+<p class="muted small cat-uncat">{{ uncategorized }} photo{{ 's' if uncategorized != 1 }} currently uncategorized.</p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.CHITRALAHAR_SUBMOVE_URL = "{{ url_for('admin.subcategory_move', sub_id=0) }}";
+  window.CHITRALAHAR_CATMOVE_URL = "{{ url_for('admin.category_move', cat_id=0) }}";
+</script>
+{% endblock %}

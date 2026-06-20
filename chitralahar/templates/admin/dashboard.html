@@ -1,0 +1,70 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="stat-grid">
+  <div class="stat">
+    <span class="stat-num">{{ stats.photos }}</span>
+    <span class="stat-label">Photos</span>
+  </div>
+  <div class="stat">
+    <span class="stat-num">{{ stats.categories }}</span>
+    <span class="stat-label">Categories</span>
+  </div>
+  <div class="stat">
+    <span class="stat-num">{{ stats.posts }}</span>
+    <span class="stat-label">Posts</span>
+  </div>
+  <div class="stat">
+    <span class="stat-num">{{ stats.drafts }}</span>
+    <span class="stat-label">Drafts</span>
+  </div>
+</div>
+
+<div class="quick-actions">
+  <a class="btn btn-primary" href="{{ url_for('admin.photos') }}">Upload photos</a>
+  <a class="btn" href="{{ url_for('admin.categories') }}">Manage categories</a>
+  <a class="btn" href="{{ url_for('admin.post_new') }}">Write a post</a>
+  <a class="btn" href="{{ url_for('admin.templates') }}">Templates</a>
+  <a class="btn" href="{{ url_for('admin.about_edit') }}">Edit about</a>
+</div>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Recent photos</h2>
+    <a href="{{ url_for('admin.photos') }}" class="panel-link">Manage all &rsaquo;</a>
+  </div>
+  {% if recent_photos %}
+  <div class="thumb-row">
+    {% for p in recent_photos %}
+    <a class="thumb-chip" href="{{ url_for('admin.photo_edit', photo_id=p.id) }}" title="{{ p.title or p.orig_name }}">
+      <img src="{{ url_for('static', filename='uploads/thumbs/' ~ p.thumb_filename) }}" alt="">
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">No photos uploaded yet.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Recent posts</h2>
+    <a href="{{ url_for('admin.posts') }}" class="panel-link">Manage all &rsaquo;</a>
+  </div>
+  {% if recent_posts %}
+  <ul class="mini-list">
+    {% for post in recent_posts %}
+    <li>
+      <a href="{{ url_for('admin.post_edit', post_id=post.id) }}">{{ post.title }}</a>
+      <span class="badge {{ 'badge-on' if post.published else 'badge-off' }}">{{ 'Published' if post.published else 'Draft' }}</span>
+      <span class="muted small">{{ post.updated_at | dateformat }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">No posts yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

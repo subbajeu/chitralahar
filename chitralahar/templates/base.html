@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ site.site_title }}{% endblock %}</title>
+  <meta name="description" content="{% block description %}{{ site.tagline }}{% endblock %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  {% if site.favicon %}
+  <link rel="icon" href="{{ url_for('static', filename='uploads/misc/' ~ site.favicon) }}">
+  {% else %}
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231a1814'/><circle cx='16' cy='16' r='7' fill='none' stroke='%23fff' stroke-width='2'/><circle cx='16' cy='16' r='2' fill='%23fff'/></svg>">
+  {% endif %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body data-template="{{ site.template }}" class="{% block body_class %}{% endblock %}">
+  <header class="site-header" id="siteHeader">
+    <div class="wrap header-inner">
+      <a class="wordmark{{ ' has-logo' if site.logo }}" href="{{ url_for('public.home') }}">
+        {% if site.logo %}<img class="brand-logo" src="{{ url_for('static', filename='uploads/misc/' ~ site.logo) }}" alt="{{ site.site_title }}">{% else %}{{ site.site_title }}{% endif %}
+      </a>
+      <button class="nav-toggle" id="navToggle" type="button" aria-label="Menu"
+              aria-expanded="false" aria-controls="siteNav">
+        <span></span><span></span><span></span>
+      </button>
+      <nav class="site-nav" id="siteNav">
+        {% for item in menu() %}
+          {% if item.children %}
+          <div class="nav-item has-children">
+            <a href="{{ item.href }}" class="nav-link {{ 'is-active' if item.active }}"{% if item.external %} target="_blank" rel="noopener"{% endif %}>{{ item.label }} <span class="nav-caret" aria-hidden="true">⌄</span></a>
+            <div class="nav-dropdown">
+              {% for child in item.children %}
+              <a href="{{ child.href }}" class="{{ 'is-active' if child.active }}"{% if child.external %} target="_blank" rel="noopener"{% endif %}>{{ child.label }}</a>
+              {% endfor %}
+            </div>
+          </div>
+          {% else %}
+          <a href="{{ item.href }}" class="nav-link {{ 'is-active' if item.active }}"{% if item.external %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a>
+          {% endif %}
+        {% endfor %}
+      </nav>
+    </div>
+  </header>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-stack wrap">
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <main class="site-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <p class="footer-name">{{ site.footer_text or (site.author_name or site.site_title) }}</p>
+      <div class="footer-links">
+        {% if site.instagram %}<a href="{{ site.instagram }}" target="_blank" rel="noopener" aria-label="Instagram" title="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" stroke="none"/></svg></a>{% endif %}
+        {% if site.twitter %}<a href="{{ site.twitter }}" target="_blank" rel="noopener" aria-label="X (Twitter)" title="X (Twitter)"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.66l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>{% endif %}
+        {% if site.facebook %}<a href="{{ site.facebook }}" target="_blank" rel="noopener" aria-label="Facebook" title="Facebook"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 13.5h2.5l1-4H14v-2c0-1.03 0-2 2-2h1.5V2.14c-.326-.043-1.557-.14-2.857-.14C11.928 2 10 3.657 10 6.7v2.8H7v4h3V22h4z"/></svg></a>{% endif %}
+        {% if site.email %}<a href="mailto:{{ site.email }}" aria-label="Email" title="Email"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></a>{% endif %}
+      </div>
+      <p class="footer-meta">{{ site.footer_copyright or ('© ' ~ now_year ~ ' ' ~ (site.author_name or site.site_title)) }}</p>
+    </div>
+  </footer>
+
+  <div class="lightbox" id="lightbox" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Photo viewer">
+    <button class="lb-btn lb-close" data-lb="close" aria-label="Close">&times;</button>
+    <button class="lb-btn lb-prev" data-lb="prev" aria-label="Previous photo">&lsaquo;</button>
+    <button class="lb-btn lb-next" data-lb="next" aria-label="Next photo">&rsaquo;</button>
+    <figure class="lb-stage">
+      <img class="lb-img" id="lbImg" src="" alt="">
+      <figcaption class="lb-cap" id="lbCap"></figcaption>
+    </figure>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

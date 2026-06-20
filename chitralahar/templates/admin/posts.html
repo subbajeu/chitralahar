@@ -1,0 +1,40 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Blog posts{% endblock %}
+{% block page_title %}Blog posts{% endblock %}
+{% block actions %}<a href="{{ url_for('admin.post_new') }}" class="btn btn-primary">New post</a>{% endblock %}
+
+{% block content %}
+{% if posts %}
+<table class="table">
+  <thead>
+    <tr><th>Title</th><th>Status</th><th>Updated</th><th class="ta-right">Actions</th></tr>
+  </thead>
+  <tbody>
+    {% for post in posts %}
+    <tr>
+      <td>
+        <a class="table-title" href="{{ url_for('admin.post_edit', post_id=post.id) }}">{{ post.title }}</a>
+        <span class="muted small slug">/{{ post.slug }}</span>
+      </td>
+      <td><span class="badge {{ 'badge-on' if post.published else 'badge-off' }}">{{ 'Published' if post.published else 'Draft' }}</span></td>
+      <td class="muted small">{{ post.updated_at | dateformat }}</td>
+      <td class="ta-right nowrap">
+        {% if post.published %}<a href="{{ url_for('public.post', slug=post.slug) }}" target="_blank" rel="noopener">View</a> · {% endif %}
+        <a href="{{ url_for('admin.post_edit', post_id=post.id) }}">Edit</a> ·
+        <form method="post" action="{{ url_for('admin.post_delete', post_id=post.id) }}"
+              class="js-confirm inline" data-confirm="Delete &quot;{{ post.title }}&quot;?">
+          <button type="submit" class="linklike danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty-state admin-empty">
+  <p class="empty-title">No posts yet</p>
+  <p class="muted">Share a story, a shoot, or a thought.</p>
+  <p><a href="{{ url_for('admin.post_new') }}" class="btn btn-primary">Write your first post</a></p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,28 @@
+# systemd unit for Chitralahar via gunicorn (recommended for Apache reverse-proxy).
+# Install:  sudo cp deploy/chitralahar.service /etc/systemd/system/
+#           sudo systemctl daemon-reload && sudo systemctl enable --now chitralahar
+[Unit]
+Description=Chitralahar photography CMS (gunicorn)
+After=network.target
+
+[Service]
+User=http
+Group=http
+WorkingDirectory=/srv/chitralahar
+# Generate once:  python -c "import secrets; print(secrets.token_hex(32))"
+Environment=SECRET_KEY=REPLACE_WITH_A_LONG_RANDOM_STRING
+Environment=CHITRALAHAR_DATABASE=/srv/chitralahar/instance/chitralahar.db
+# Serving over HTTPS (strongly recommended): makes the admin session cookie Secure.
+Environment=CHITRALAHAR_HTTPS=1
+# Max upload size per request, in MB. Unset = unlimited. NOTE: a multi-file batch
+# upload counts as ONE request, so a low cap blocks large batches. On a public
+# server set a generous cap and keep Apache's LimitRequestBody in sync, e.g.:
+# Environment=CHITRALAHAR_MAX_UPLOAD_MB=200
+# --preload runs the one-time DB init in the master before forking workers.
+ExecStart=/srv/chitralahar/.venv/bin/gunicorn --workers 3 --preload \
+    --timeout 120 --bind 127.0.0.1:8000 wsgi:application
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

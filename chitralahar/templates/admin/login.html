@@ -1,0 +1,15 @@
+{% extends "admin/auth.html" %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<h1 class="auth-title">Sign in</h1>
+<form method="post" class="auth-form" novalidate>
+  <label>Username
+    <input type="text" name="username" autocomplete="username" required autofocus>
+  </label>
+  <label>Password
+    <input type="password" name="password" autocomplete="current-password" required>
+  </label>
+  <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+</form>
+<p class="auth-back"><a href="{{ url_for('public.home') }}">&lsaquo; Back to site</a></p>
+{% endblock %}

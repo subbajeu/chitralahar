@@ -1,0 +1,175 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<form method="post" class="form-stack settings-form" enctype="multipart/form-data">
+  <div class="field-group">
+    <h2>Identity</h2>
+    <label>Site title
+      <input type="text" name="site_title" value="{{ values.site_title }}" placeholder="Chitralahar">
+    </label>
+    <label>Tagline
+      <input type="text" name="tagline" value="{{ values.tagline }}" placeholder="Photography">
+    </label>
+    <label>Your name
+      <input type="text" name="author_name" value="{{ values.author_name }}" placeholder="Shown in the footer & copyright">
+    </label>
+  </div>
+
+  <div class="field-group">
+    <h2>Branding</h2>
+    <div class="brand-field">
+      <span class="side-label">Logo</span>
+      {% if values.logo %}
+      <span class="brand-preview"><img src="{{ url_for('static', filename='uploads/misc/' ~ values.logo) }}" alt="Logo"></span>
+      <label class="checkbox small-check"><input type="checkbox" name="remove_logo"><span>Remove logo</span></label>
+      {% endif %}
+      <input type="file" name="logo" accept="image/*">
+      <p class="muted small">Replaces the site title in the header. A transparent PNG works on every template.</p>
+    </div>
+    <div class="brand-field">
+      <span class="side-label">Favicon</span>
+      {% if values.favicon %}
+      <span class="brand-preview brand-preview-sm"><img src="{{ url_for('static', filename='uploads/misc/' ~ values.favicon) }}" alt="Favicon"></span>
+      <label class="checkbox small-check"><input type="checkbox" name="remove_favicon"><span>Remove favicon</span></label>
+      {% endif %}
+      <input type="file" name="favicon" accept="image/*">
+      <p class="muted small">The icon in the browser tab — a small square PNG looks best.</p>
+    </div>
+  </div>
+
+  <div class="field-group">
+    <h2>Contact &amp; social</h2>
+    <label>Email
+      <input type="email" name="email" value="{{ values.email }}" placeholder="you@example.com">
+    </label>
+    <label>Instagram URL
+      <input type="url" name="instagram" value="{{ values.instagram }}" placeholder="https://instagram.com/you">
+    </label>
+    <label>Twitter / X URL
+      <input type="url" name="twitter" value="{{ values.twitter }}" placeholder="https://x.com/you">
+    </label>
+    <label>Facebook URL
+      <input type="url" name="facebook" value="{{ values.facebook }}" placeholder="https://facebook.com/you">
+    </label>
+  </div>
+
+  <div class="field-group">
+    <h2>Footer</h2>
+    <label>Footer text
+      <input type="text" name="footer_text" value="{{ values.footer_text }}" placeholder="Defaults to your name">
+    </label>
+    <label>Copyright line
+      <input type="text" name="footer_copyright" value="{{ values.footer_copyright }}"
+             placeholder="Blank = © {{ now_year }} {{ values.author_name or values.site_title }}">
+    </label>
+  </div>
+
+  <div class="field-group">
+    <h2>Watermark</h2>
+    <label class="checkbox">
+      <input type="checkbox" name="watermark_enabled" id="wmEnabled" {{ 'checked' if values.watermark_enabled }}>
+      <span>Watermark public images</span>
+    </label>
+    <p class="muted small">Applied to your public gallery only — the full-resolution
+      originals clients download from private albums always stay clean.</p>
+
+    <label>Watermark type
+      <select name="watermark_type" id="wmType">
+        <option value="text" {{ 'selected' if values.watermark_type != 'image' }}>Text</option>
+        <option value="image" {{ 'selected' if values.watermark_type == 'image' }}>Image / logo</option>
+      </select>
+    </label>
+
+    <fieldset class="wm-sub">
+      <legend>Text watermark</legend>
+      <label>Text
+        <input type="text" name="watermark_text" id="wmText" value="{{ values.watermark_text }}"
+               placeholder="Blank = your site title ({{ values.site_title }})">
+      </label>
+      <div class="field-row">
+        <label>Font
+          <select name="watermark_font" id="wmFont">
+            <option value="">Default (built-in sans)</option>
+            {% for disp, fn in fonts %}
+            <option value="{{ fn }}" {{ 'selected' if values.watermark_font == fn }}>{{ disp }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Font size (px)
+          <input type="number" name="watermark_font_size" id="wmSize" value="{{ values.watermark_font_size or 100 }}" min="10" max="800" step="2">
+        </label>
+        <label>Color
+          <input type="color" name="watermark_color" id="wmColor" value="{{ values.watermark_color or '#ffffff' }}">
+        </label>
+      </div>
+      {% if not fonts %}<p class="muted small">Drop <code>.ttf</code>/<code>.otf</code> files into <code>chitralahar/static/fonts/</code> to add more fonts.</p>{% endif %}
+    </fieldset>
+
+    <fieldset class="wm-sub">
+      <legend>Image / logo watermark</legend>
+      <div class="brand-field">
+        {% if values.watermark_image %}
+        <span class="brand-preview"><img src="{{ url_for('static', filename='uploads/misc/' ~ values.watermark_image) }}" alt="Watermark"></span>
+        <label class="checkbox small-check"><input type="checkbox" name="remove_watermark_image"><span>Remove watermark image</span></label>
+        {% endif %}
+        <input type="file" name="watermark_image" accept="image/*">
+        <p class="muted small">A transparent PNG works best. (Upload &amp; save to preview a new one.)</p>
+      </div>
+      <label>Size (% of photo width)
+        <input type="number" name="watermark_scale" id="wmScale" value="{{ values.watermark_scale }}" min="3" max="100" step="1">
+      </label>
+    </fieldset>
+
+    <div class="field-row">
+      <label>Position
+        <select name="watermark_position" id="wmPos">
+          {% for val, lbl in [('br','Bottom-right'),('bl','Bottom-left'),('tr','Top-right'),('tl','Top-left'),('center','Center'),('tiled','Tiled (repeat)')] %}
+          <option value="{{ val }}" {{ 'selected' if values.watermark_position == val }}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Opacity (%)
+        <input type="number" name="watermark_opacity" id="wmOpacity" value="{{ values.watermark_opacity }}" min="5" max="95" step="5">
+      </label>
+    </div>
+
+    <div class="wm-preview">
+      <span class="side-label">Live preview</span>
+      <img id="wmPreview" alt="Watermark preview">
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Save settings</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var img = document.getElementById("wmPreview");
+  if (!img) return;
+  var base = "{{ url_for('admin.watermark_preview') }}";
+  var get = function (id) { return document.getElementById(id); };
+  var fields = ["wmType", "wmText", "wmFont", "wmSize", "wmColor", "wmPos", "wmOpacity", "wmScale"];
+  var timer;
+  function refresh() {
+    var q = new URLSearchParams({
+      type: get("wmType").value, text: get("wmText").value, font: get("wmFont").value,
+      size: get("wmSize").value, color: get("wmColor").value, position: get("wmPos").value,
+      opacity: get("wmOpacity").value, scale: get("wmScale").value, _: Date.now(),
+    });
+    img.src = base + "?" + q.toString();
+  }
+  function schedule() { clearTimeout(timer); timer = setTimeout(refresh, 250); }
+  fields.forEach(function (id) {
+    var el = get(id);
+    if (el) { el.addEventListener("input", schedule); el.addEventListener("change", schedule); }
+  });
+  refresh();
+})();
+</script>
+{% endblock %}

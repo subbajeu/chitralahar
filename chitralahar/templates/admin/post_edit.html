@@ -1,0 +1,126 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ 'Edit post' if post else 'New post' }}{% endblock %}
+{% block page_title %}{{ 'Edit post' if post else 'New post' }}{% endblock %}
+{% block actions %}<a href="{{ url_for('admin.posts') }}" class="btn btn-ghost">&lsaquo; All posts</a>{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='vendor/quill/quill.snow.css') }}">{% endblock %}
+
+{% block content %}
+<form method="post" class="post-editor"
+      action="{{ url_for('admin.post_edit', post_id=post.id) if post else url_for('admin.post_new') }}"
+      enctype="multipart/form-data">
+  <div class="editor-grid">
+    <div class="editor-main">
+      <input type="text" name="title" class="title-input" placeholder="Post title"
+             value="{{ post.title if post else '' }}">
+
+      <div class="quill-wrap">
+        <div id="quillEditor"></div>
+      </div>
+      <input type="hidden" name="body" id="bodyInput">
+      <div id="quillInit" hidden>{{ (post.body if post else '') | clean_html }}</div>
+      <p class="muted small">Format with the toolbar; use the image button to upload &amp; insert photos.</p>
+    </div>
+
+    <aside class="editor-side">
+      <div class="side-card">
+        <label class="checkbox big">
+          <input type="checkbox" name="published" {{ 'checked' if post and post.published }}>
+          <span>Published</span>
+        </label>
+        <p class="muted small">Unpublished posts are saved as drafts.</p>
+      </div>
+
+      <div class="side-card">
+        <h3>Cover image</h3>
+        {% if post and post.cover_filename %}
+        <div class="cover-preview">
+          <img src="{{ url_for('static', filename='uploads/misc/' ~ post.cover_filename) }}" alt="Cover">
+        </div>
+        <label class="checkbox small-check">
+          <input type="checkbox" name="remove_cover"><span>Remove current cover</span>
+        </label>
+        {% endif %}
+        <input type="file" name="cover" accept="image/*">
+      </div>
+
+      <div class="side-card">
+        <label class="side-label">URL slug</label>
+        <input type="text" name="slug" value="{{ post.slug if post else '' }}" placeholder="auto from title">
+        <label class="side-label">Excerpt</label>
+        <textarea name="excerpt" rows="3" placeholder="Optional summary for the blog list (auto-generated if blank).">{{ post.excerpt if post else '' }}</textarea>
+      </div>
+
+      <div class="side-actions">
+        <button type="submit" class="btn btn-primary btn-block">Save post</button>
+        <a href="{{ url_for('admin.posts') }}" class="btn btn-ghost btn-block">Cancel</a>
+      </div>
+    </aside>
+  </div>
+</form>
+
+{% if post %}
+<form method="post" action="{{ url_for('admin.post_delete', post_id=post.id) }}"
+      class="js-confirm danger-zone" data-confirm="Delete &quot;{{ post.title }}&quot; permanently?">
+  <span>Delete this post.</span>
+  <button type="submit" class="btn btn-danger">Delete post</button>
+</form>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/quill/quill.min.js') }}"></script>
+<script>
+(function () {
+  var el = document.getElementById("quillEditor");
+  if (!el || !window.Quill) return;
+  var UPLOAD = "{{ url_for('admin.inline_upload') }}";
+
+  function imageHandler() {
+    var input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = function () {
+      var f = input.files && input.files[0];
+      if (!f) return;
+      var fd = new FormData();
+      fd.append("image", f);
+      fetch(UPLOAD, { method: "POST", body: fd, credentials: "same-origin" })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d.url) return;
+          var range = quill.getSelection(true);
+          quill.insertEmbed(range.index, "image", d.url, "user");
+          quill.setSelection(range.index + 1);
+        })
+        .catch(function () {});
+    };
+    input.click();
+  }
+
+  var quill = new Quill(el, {
+    theme: "snow",
+    placeholder: "Write your post…",
+    modules: {
+      toolbar: {
+        container: [
+          [{ header: [2, 3, false] }],
+          ["bold", "italic", "underline"],
+          [{ list: "ordered" }, { list: "bullet" }],
+          ["blockquote", "link", "image"],
+          ["clean"],
+        ],
+        handlers: { image: imageHandler },
+      },
+    },
+  });
+
+  var init = document.getElementById("quillInit");
+  if (init && init.innerHTML.trim()) quill.root.innerHTML = init.innerHTML;
+
+  var hidden = document.getElementById("bodyInput");
+  el.closest("form").addEventListener("submit", function () {
+    hidden.value = quill.root.innerHTML;
+  });
+})();
+</script>
+{% endblock %}
