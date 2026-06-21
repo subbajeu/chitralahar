@@ -28,6 +28,22 @@
   <div class="dropzone-status" id="dzStatus" hidden></div>
 </form>
 
+{% if active_album and active_album.private and active_album.share_token %}
+<div class="share-bar">
+  <span class="share-bar-label">Private album — share link</span>
+  <div class="share-copy">
+    <input type="text" class="share-link" readonly
+           value="{{ url_for('public.private_gallery', token=active_album.share_token, _external=True) }}">
+    <button type="button" class="btn btn-sm copy-btn" data-copy>Copy</button>
+  </div>
+  <a class="btn btn-sm btn-ghost" href="{{ url_for('public.private_gallery', token=active_album.share_token) }}"
+     target="_blank" rel="noopener">Open</a>
+  {% if active_album.passkey %}<span class="share-bar-tag">passphrase set</span>{% endif %}
+  {% if active_album.allow_download %}<span class="share-bar-tag">download on</span>{% endif %}
+  <a class="share-bar-manage" href="{{ url_for('admin.categories') }}">Share settings &rarr;</a>
+</div>
+{% endif %}
+
 <div class="photos-layout {{ 'no-tree' if not browse_cats }}">
   {% if browse_cats %}
   <aside class="photo-tree" aria-label="Browse photos by category">

@@ -171,6 +171,12 @@ def photos():
            FROM subcategories s ORDER BY s.sort_order, s.name COLLATE NOCASE"""
     ).fetchall():
         browse_subs.setdefault(srow["category_id"], []).append(srow)
+    # The album currently being browsed (so private ones can show their share link).
+    active_album = None
+    if sub is not None:
+        active_album = db.execute("SELECT * FROM subcategories WHERE id = ?", (sub,)).fetchone()
+    elif cat is not None:
+        active_album = db.execute("SELECT * FROM categories WHERE id = ?", (cat,)).fetchone()
     return render_template(
         "admin/photos.html",
         photos=items,
@@ -179,6 +185,7 @@ def photos():
         browse_cats=browse_cats,
         browse_subs=browse_subs,
         active=active,
+        active_album=active_album,
         total=db.execute("SELECT COUNT(*) c FROM photos").fetchone()["c"],
         uncat_count=db.execute(
             "SELECT COUNT(*) c FROM photos WHERE category_id IS NULL"

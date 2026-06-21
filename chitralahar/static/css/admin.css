@@ -506,6 +506,21 @@ a.tree-row:hover { background: var(--bg-sink); color: var(--ink); }
 .share-copy .share-link { flex: 1; min-width: 0; }
 .copy-btn { flex-shrink: 0; white-space: nowrap; }
 
+/* Share-link bar on the Photos browser when a private album is selected */
+.share-bar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px;
+  margin: 0 0 18px; padding: 10px 14px;
+  background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.share-bar .share-copy { flex: 1 1 280px; width: auto; }
+.share-bar-label { font-size: .82rem; font-weight: 600; color: var(--ink-2); }
+.share-bar-tag {
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--ink-3); border: 1px solid var(--line-2); border-radius: 999px; padding: 2px 9px;
+}
+.share-bar-manage { font-size: .82rem; color: var(--ink-2); margin-left: auto; }
+.share-bar-manage:hover { color: var(--ink); }
+
 /* Quill WYSIWYG (blog editor) */
 .quill-wrap { background: #fff; border-radius: var(--radius); }
 .quill-wrap .ql-toolbar { border-color: var(--line); border-radius: var(--radius) var(--radius) 0 0; background: var(--bg-soft); }
