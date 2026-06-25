@@ -188,10 +188,14 @@ HTTPS** (below), set a fixed `SECRET_KEY` and `CHITRALAHAR_HTTPS=1`, and work
 through the hardening checklist. For a high-traffic public site you may also add
 `Flask-WTF` CSRF tokens on top of the existing SameSite + Origin protections.
 
-## Deploy on Apache (Arch Linux)
+## Deploy on Apache
 
-Ready-made config files live in [`deploy/`](deploy/). Two options — the first is
-recommended (most robust, clean env handling).
+These steps assume **Apache (httpd) is already installed and running** on your
+server — check with `httpd -v`. Paths below are for **Arch Linux** (`/etc/httpd/`);
+on Debian/Ubuntu use `/etc/apache2/`, enable modules with
+`sudo a2enmod proxy proxy_http headers`, and drop the vhost in `sites-available/`
+(`sudo a2ensite chitralahar`). Ready-made config files live in [`deploy/`](deploy/)
+— two options, the first recommended (most robust, clean env handling).
 
 ### Option A — Apache reverse-proxy → gunicorn (recommended)
 
@@ -213,16 +217,15 @@ sudo cp deploy/chitralahar.service /etc/systemd/system/
 sudoedit /etc/systemd/system/chitralahar.service      # set SECRET_KEY to a long random value
 sudo systemctl daemon-reload && sudo systemctl enable --now chitralahar
 
-# 4. Apache vhost
-sudo pacman -S apache
+# 4. Configure the (already-installed) Apache vhost
 sudo cp deploy/apache-reverse-proxy.conf /etc/httpd/conf/extra/chitralahar.conf
-#    edit ServerName, then in /etc/httpd/conf/httpd.conf uncomment:
+#    edit ServerName, then in /etc/httpd/conf/httpd.conf make sure these are loaded:
 #       LoadModule proxy_module / proxy_http_module / headers_module
 #    and add at the end:  Include conf/extra/chitralahar.conf
-sudo systemctl enable --now httpd
+sudo apachectl configtest && sudo systemctl restart httpd
 
 # 5. HTTPS — REQUIRED for a public site (the admin cookie must not cross HTTP)
-sudo pacman -S certbot certbot-apache
+#    (install certbot first if you don't have it: sudo pacman -S certbot certbot-apache)
 sudo certbot --apache -d photos.example.com
 ```
 
@@ -236,15 +239,72 @@ images load *through* the app with the passphrase enforced, not via a guessable
 ### Option B — mod_wsgi (runs inside Apache, no gunicorn)
 
 ```bash
-sudo pacman -S mod_wsgi          # built for the system python3
+sudo pacman -S mod_wsgi          # the Apache module only (if not already present; must match system python3)
 sudo cp deploy/apache-mod-wsgi.conf /etc/httpd/conf/extra/chitralahar.conf
 # In httpd.conf:  LoadModule wsgi_module modules/mod_wsgi.so + Include the file
 ```
 
-Build the venv with the **system** `python3` (must match mod_wsgi's Python). Because
-mod_wsgi doesn't pass `SetEnv` into `os.environ`, set `SECRET_KEY` /
-`CHITRALAHAR_DATABASE` at the top of `wsgi.py`, e.g. `import os;
-os.environ["SECRET_KEY"] = "…"`.
+Build the venv with the **system** `python3` (must match mod_wsgi's Python — and
+note that on a rolling distro like Arch a `python3` upgrade means rebuilding both
+`mod_wsgi` and the venv). mod_wsgi doesn't read `SetEnv`/systemd env, but
+`SECRET_KEY` is fine left unset (the app creates `instance/.secret_key`) and the
+database path defaults correctly. For HTTPS, set it at the top of `wsgi.py`:
+`import os; os.environ["CHITRALAHAR_HTTPS"] = "1"`. For multiple instances, give
+each a distinct `WSGIDaemonProcess` name with its own `python-home`/`python-path`.
+
+> **gunicorn vs mod_wsgi:** prefer **Option A (gunicorn)** if you run several
+> instances or want each app to restart/log independently and survive Python
+> upgrades. Option B has fewer moving parts (no port, no service) but is more
+> fragile on rolling distros and mixes env/logs into Apache.
+
+### Custom install location
+
+The project doesn't have to live in `/srv/chitralahar`. The **project root** is the
+folder containing `wsgi.py`; the inner `chitralahar/` is the Python package, and the
+static files are at `<root>/chitralahar/static`. For example, with root
+`/srv/http/example.net/html/chitralahar`, use:
+
+- `WorkingDirectory` (and `<root>/.venv` for the venv) → that root
+- `Alias /static` → `/srv/http/example.net/html/chitralahar/chitralahar/static`
+- `CHITRALAHAR_DATABASE` → `<root>/instance/chitralahar.db`
+
+Make sure the `http` user can **traverse every parent folder** (`chmod o+x` up the
+chain). If the root sits **inside Apache's web root** (e.g. under `/srv/http/`), the
+vhost must proxy every request so the raw `.py` source is never served as a static
+file — better still, keep the code *outside* the web root.
+
+### Running more than one instance
+
+One instance = **its own folder + venv + gunicorn port + systemd service + Apache
+vhost**. To add another, copy the pattern and change only these — each folder keeps
+its own database and uploads automatically:
+
+| Thing             | Instance 1         | Instance 2          |
+|-------------------|--------------------|---------------------|
+| Folder (root)     | `/srv/site-a`      | `/srv/site-b`       |
+| gunicorn `--bind` | `127.0.0.1:8000`   | `127.0.0.1:8001`    |
+| systemd service   | `chitralahar-a`    | `chitralahar-b`     |
+| `ServerName`      | `a.example.net`    | `b.example.net`     |
+
+Two `*:80` vhosts can't share a `ServerName`. With a single (e.g. DDNS) hostname,
+separate instances by **port** (`Listen 8080` + `<VirtualHost *:8080>`, reached at
+`host:8080`) or by **subdomain** if your DNS supports it.
+
+### Troubleshooting
+
+- **`status=203/EXEC` — gunicorn won't start.** systemd can't execute the binary —
+  almost always a `.venv` **copied from another machine** (e.g. macOS → Linux): its
+  shebang points at a Python that isn't there. Never copy `.venv`; rebuild it on the
+  server: `rm -rf .venv && python -m venv .venv && ./.venv/bin/pip install -r
+  requirements.txt`, then `sudo systemctl restart chitralahar`. To see the real
+  error, run it by hand: `sudo -u http ./.venv/bin/gunicorn --bind 127.0.0.1:8000 wsgi:application`.
+- **The page shows raw Python source.** Apache is serving files instead of proxying —
+  usually the app is down (fix gunicorn first), or the proxy modules aren't loaded
+  (`httpd -M | grep -E 'proxy|headers'`), or the vhost `ServerName` doesn't match.
+  Check the app directly with `curl -I http://127.0.0.1:8000/`.
+- **Can't stay logged in.** You set `CHITRALAHAR_HTTPS=1` but are visiting over plain
+  `http://`, so the session cookie is HTTPS-only. Switch to HTTPS (certbot), or
+  comment out `CHITRALAHAR_HTTPS` until then.
 
 ### Production hardening checklist
 

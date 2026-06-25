@@ -32,5 +32,8 @@ chitralahar/static/fonts/*
 # Env
 .env
 
+# Generated tool output (code-graph/analysis) — not part of the project
+graphify-out/
+
 # OS
 .DS_Store

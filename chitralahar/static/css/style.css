@@ -374,6 +374,10 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); }
 }
 .lb-btn:hover { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .lb-close { top: 22px; right: 22px; font-size: 1.7rem; }
+.lb-play { top: 22px; left: 22px; }
+.lb-play .lb-ic-pause { display: none; }
+.lb-play.playing .lb-ic-play { display: none; }
+.lb-play.playing .lb-ic-pause { display: block; }
 .lb-prev { left: 22px; top: 50%; transform: translateY(-50%); }
 .lb-next { right: 22px; top: 50%; transform: translateY(-50%); }
 body.lb-locked { overflow: hidden; }

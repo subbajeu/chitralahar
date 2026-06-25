@@ -71,10 +71,30 @@
   }
 
   function close() {
+    stopShow();
     lb.classList.remove("is-open");
     lb.setAttribute("aria-hidden", "true");
     document.body.classList.remove("lb-locked");
   }
+
+  // --- Slideshow (auto-advance) ---
+  var playBtn = lb.querySelector(".lb-play");
+  var slideTimer = null;
+  var SLIDE_DELAY = 3500;
+  if (playBtn && links.length < 2) playBtn.style.display = "none";  // nothing to advance through
+
+  function stopShow() {
+    if (slideTimer) { clearInterval(slideTimer); slideTimer = null; }
+    if (playBtn) { playBtn.classList.remove("playing"); playBtn.setAttribute("aria-label", "Play slideshow"); }
+  }
+  function startShow() {
+    if (links.length < 2) return;
+    if (slideTimer) clearInterval(slideTimer);
+    if (playBtn) { playBtn.classList.add("playing"); playBtn.setAttribute("aria-label", "Pause slideshow"); }
+    slideTimer = setInterval(function () { show(idx + 1); }, SLIDE_DELAY);
+  }
+  function toggleShow() { if (slideTimer) stopShow(); else startShow(); }
+  function nav(i) { show(i); if (slideTimer) startShow(); }  // manual move keeps the rhythm
 
   links.forEach(function (a, i) {
     a.addEventListener("click", function (e) {
@@ -84,18 +104,21 @@
   });
 
   lb.addEventListener("click", function (e) {
-    var action = e.target.getAttribute("data-lb");
+    var btn = e.target.closest("[data-lb]");        // handles clicks on the svg/path inside a button
+    var action = btn && btn.getAttribute("data-lb");
     if (action === "close") return close();
-    if (action === "prev") return show(idx - 1);
-    if (action === "next") return show(idx + 1);
+    if (action === "prev") return nav(idx - 1);
+    if (action === "next") return nav(idx + 1);
+    if (action === "play") return toggleShow();
     if (e.target === lb || e.target.classList.contains("lb-stage")) close();
   });
 
   document.addEventListener("keydown", function (e) {
     if (!lb.classList.contains("is-open")) return;
     if (e.key === "Escape") close();
-    else if (e.key === "ArrowLeft") show(idx - 1);
-    else if (e.key === "ArrowRight") show(idx + 1);
+    else if (e.key === "ArrowLeft") nav(idx - 1);
+    else if (e.key === "ArrowRight") nav(idx + 1);
+    else if (e.key === " " || e.key === "Spacebar") { e.preventDefault(); toggleShow(); }
   });
 
   // Touch swipe between photos.
@@ -105,7 +128,7 @@
   }, { passive: true });
   lb.addEventListener("touchend", function (e) {
     var dx = e.changedTouches[0].clientX - startX;
-    if (Math.abs(dx) > 50) show(idx + (dx < 0 ? 1 : -1));
+    if (Math.abs(dx) > 50) nav(idx + (dx < 0 ? 1 : -1));
   }, { passive: true });
 })();
 
