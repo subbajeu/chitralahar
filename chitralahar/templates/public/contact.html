@@ -15,6 +15,16 @@
     {{ (page.body if page else "") | clean_html }}
   </div>
 
+  <form method="post" class="contact-form" action="{{ url_for('public.contact') }}">
+    <div class="cf-row">
+      <label>Name<input type="text" name="name" maxlength="200"></label>
+      <label>Email<input type="email" name="email" maxlength="200"></label>
+    </div>
+    <label>Message<textarea name="message" rows="6" maxlength="5000" required></textarea></label>
+    <input type="text" name="website" class="cf-hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+    <button type="submit" class="btn btn-primary">Send message</button>
+  </form>
+
   {% if site.email or site.instagram or site.twitter or site.facebook %}
   <div class="about-contact">
     {% if site.email %}<a href="mailto:{{ site.email }}">{{ site.email }}</a>{% endif %}

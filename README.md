@@ -92,6 +92,16 @@ Sign in at `/admin`. The sidebar gives you:
 - **Originals kept** — every upload is stored three ways: the untouched **original**
   (for private downloads), a **display** image (~2200px, what the public site shows),
   and a thumbnail.
+- **Client proofing** — viewers of a private album can ♥ their favourite photos;
+  you see the picks (count + per-photo hearts) in the admin Photos browser.
+- **Contact form & inbox** — the Contact page has a form (honeypot + rate-limited);
+  messages land in an admin **Messages** inbox with an unread badge.
+- **SEO & feeds** — `sitemap.xml`, `robots.txt`, Open Graph tags (link previews),
+  and an RSS feed for the blog. Gallery images use `srcset` for faster loading.
+- **EXIF** — camera/lens/exposure details captured on upload; optionally shown on
+  public photo pages (Settings → Photo details), with one-click backfill from originals.
+- **Backup** — one click in Settings downloads a ZIP of the database + all uploads.
+  Password change lives there too. Uploads show a progress bar.
 - **Watermark** — optionally overlay a watermark on your **public** images: either
   **text** (pick a **font** and **size**) or your own **image/logo** (with a size %).
   Choose position and opacity. It's applied only to what visitors see — your stored

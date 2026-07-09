@@ -83,11 +83,18 @@ def create_app(config_object=Config):
 
     @app.context_processor
     def inject_globals():
+        user = current_user()
+        unread = 0
+        if user:
+            from .db import get_db
+            unread = get_db().execute(
+                "SELECT COUNT(*) c FROM messages WHERE read = 0").fetchone()["c"]
         return {
             "site": get_settings(),
-            "current_user": current_user(),
+            "current_user": user,
             "now_year": datetime.now().year,
             "menu": build_public_menu,  # callable: only invoked by the public base
+            "unread_messages": unread,
         }
 
     # Security response headers (applied to every response).

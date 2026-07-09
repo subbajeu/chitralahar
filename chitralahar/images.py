@@ -23,6 +23,40 @@ except Exception:  # pragma: no cover - optional dependency
     HEIF_OK = False
 
 
+def extract_exif(img: Image.Image) -> dict:
+    """Pull the photographer-relevant EXIF fields into a small dict ('' if none)."""
+    out = {}
+    try:
+        exif = img.getexif()
+        ifd = exif.get_ifd(0x8769)  # Exif sub-IFD: exposure data lives here
+        model = str(exif.get(272) or "").strip()          # camera model
+        make = str(exif.get(271) or "").strip()
+        if model:
+            out["camera"] = model if model.startswith(make.split(" ")[0] or "\0") else f"{make} {model}".strip()
+        lens = str(ifd.get(0xA434) or "").strip()
+        if lens:
+            out["lens"] = lens
+        f = ifd.get(33437)  # FNumber
+        if f:
+            out["aperture"] = "f/%g" % float(f)
+        t = ifd.get(33434)  # ExposureTime
+        if t:
+            t = float(t)
+            out["shutter"] = "1/%d s" % round(1 / t) if 0 < t < 1 else "%g s" % t
+        iso = ifd.get(34855)
+        if iso:
+            out["iso"] = "ISO %d" % (iso[0] if isinstance(iso, (tuple, list)) else int(iso))
+        fl = ifd.get(37386)  # FocalLength
+        if fl:
+            out["focal"] = "%g mm" % float(fl)
+        dt = str(ifd.get(36867) or "").strip()  # DateTimeOriginal
+        if dt:
+            out["taken"] = dt.replace(":", "-", 2)
+    except Exception:  # noqa: BLE001 — EXIF is best-effort, never block an upload
+        pass
+    return out
+
+
 def allowed_file(filename: str) -> bool:
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     return ext in current_app.config["ALLOWED_EXTENSIONS"]
@@ -82,6 +116,7 @@ def process_upload(file_storage) -> dict:
         img.load()
     except Exception as exc:  # noqa: BLE001
         raise ValueError(f"Could not read image: {exc}") from exc
+    exif = extract_exif(img)
     img = ImageOps.exif_transpose(img)
     flat = _flatten(img)
 
@@ -103,6 +138,7 @@ def process_upload(file_storage) -> dict:
     except OSError:
         orig_filename = ""  # degrade gracefully if originals/ isn't writable
 
+    import json
     return {
         "filename": name,
         "thumb_filename": name,
@@ -110,6 +146,7 @@ def process_upload(file_storage) -> dict:
         "height": display.size[1],
         "orig_name": src_name or "image",
         "orig_filename": orig_filename,
+        "exif": json.dumps(exif) if exif else "",
     }
 
 

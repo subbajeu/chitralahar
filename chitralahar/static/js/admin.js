@@ -413,12 +413,26 @@
       if (input.files && input.files.length) submitUpload(input.files.length);
     });
     function submitUpload(count) {
+      var label = count + " photo" + (count !== 1 ? "s" : "");
       if (status) {
         status.hidden = false;
-        status.textContent = "Uploading " + count + " photo" + (count !== 1 ? "s" : "") + "…";
+        status.innerHTML = 'Uploading ' + label + '… <span class="dz-pct">0%</span>' +
+          '<span class="dz-bar"><span class="dz-bar-fill"></span></span>';
       }
       dz.classList.add("is-uploading");
-      if (dz.requestSubmit) dz.requestSubmit(); else dz.submit();
+      // XHR (not fetch) so we get upload progress events.
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", dz.action);
+      xhr.upload.addEventListener("progress", function (e) {
+        if (!e.lengthComputable || !status) return;
+        var pct = Math.round((e.loaded / e.total) * 100);
+        var fill = status.querySelector(".dz-bar-fill");
+        var num = status.querySelector(".dz-pct");
+        if (fill) fill.style.width = pct + "%";
+        if (num) num.textContent = pct < 100 ? pct + "%" : "processing…";
+      });
+      xhr.onload = xhr.onerror = function () { window.location.reload(); };
+      xhr.send(new FormData(dz));
     }
   }
 

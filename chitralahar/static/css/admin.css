@@ -506,6 +506,32 @@ a.tree-row:hover { background: var(--bg-sink); color: var(--ink); }
 .share-copy .share-link { flex: 1; min-width: 0; }
 .copy-btn { flex-shrink: 0; white-space: nowrap; }
 
+/* Messages inbox */
+.nav-badge {
+  display: inline-block; min-width: 18px; padding: 1px 6px; margin-left: 4px;
+  border-radius: 999px; background: var(--danger); color: #fff;
+  font-size: .68rem; font-weight: 600; text-align: center;
+}
+.msg-list { display: flex; flex-direction: column; gap: 14px; max-width: 760px; }
+.msg { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 18px; }
+.msg-unread { border-left: 3px solid var(--danger); }
+.msg-head { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; margin-bottom: 8px; }
+.msg-del { margin-left: auto; }
+.msg-body { margin: 0; white-space: pre-wrap; color: var(--ink-2); line-height: 1.6; }
+
+/* Client-pick heart on admin photo tiles */
+.proof-flag {
+  position: absolute; bottom: 8px; left: 8px; z-index: 2;
+  width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: #fff; color: #c0392b; font-size: .85rem; box-shadow: var(--shadow-sm);
+}
+.tag-proof { color: #c0392b; border-color: #c0392b; }
+
+/* Upload progress bar */
+.dz-pct { font-variant-numeric: tabular-nums; margin-left: 6px; }
+.dz-bar { display: block; height: 4px; margin-top: 8px; border-radius: 999px; background: var(--bg-sink); overflow: hidden; }
+.dz-bar-fill { display: block; height: 100%; width: 0; background: var(--ink); border-radius: 999px; transition: width .2s var(--ease); }
+
 /* Share-link bar on the Photos browser when a private album is selected */
 .share-bar {
   display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px;

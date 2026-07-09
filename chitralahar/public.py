@@ -1,15 +1,17 @@
 """Public-facing portfolio, blog, and about pages."""
 import hashlib
 import io
+import json
 import os
 import tempfile
 import zipfile
 from pathlib import Path
 
 from flask import (
-    Blueprint, abort, current_app, flash, redirect, render_template, request,
-    send_file, session, url_for,
+    Blueprint, Response, abort, current_app, flash, jsonify, redirect,
+    render_template, request, send_file, session, url_for,
 )
+from markupsafe import escape
 from werkzeug.security import check_password_hash
 
 from .db import get_db, get_settings, photo_tags, resolve_tag
@@ -303,8 +305,14 @@ def photo(photo_id):
         "ORDER BY p.sort_order ASC, p.id ASC LIMIT 1",
         (p["sort_order"], p["sort_order"], p["id"]),
     ).fetchone()
+    exif = {}
+    if get_settings().get("show_exif") and p["exif"]:
+        try:
+            exif = json.loads(p["exif"])
+        except ValueError:
+            pass
     return render_template("public/photo.html", photo=p, prev_p=prev_p, next_p=next_p,
-                           tags=photo_tags(db, photo_id))
+                           tags=photo_tags(db, photo_id), exif=exif)
 
 
 @bp.route("/blog")
@@ -335,9 +343,27 @@ def about():
     return render_template("public/about.html", page=page)
 
 
-@bp.route("/contact")
+@bp.route("/contact", methods=["GET", "POST"])
 def contact():
     db = get_db()
+    if request.method == "POST":
+        ip = request.remote_addr or "?"
+        name = (request.form.get("name") or "").strip()[:200]
+        email = (request.form.get("email") or "").strip()[:200]
+        body = (request.form.get("message") or "").strip()[:5000]
+        # honeypot: real users never fill "website"; bots do. Pretend success.
+        if request.form.get("website") or too_many("contact:" + ip, max_attempts=5, window=3600):
+            flash("Thanks — your message has been sent.", "success")
+            return redirect(url_for("public.contact"))
+        if not body or not (name or email):
+            flash("Please add your name or email, and a message.", "error")
+        else:
+            record_failure("contact:" + ip, window=3600)  # counts sends per IP/hour
+            db.execute("INSERT INTO messages(name, email, body) VALUES (?, ?, ?)",
+                       (name, email, body))
+            db.commit()
+            flash("Thanks — your message has been sent.", "success")
+            return redirect(url_for("public.contact"))
     page = db.execute("SELECT * FROM pages WHERE slug = 'contact'").fetchone()
     return render_template("public/contact.html", page=page)
 
@@ -409,7 +435,31 @@ def private_gallery(token):
             flash("Incorrect passphrase.", "error")
         return render_template("public/private_locked.html", cat=album)
 
-    return render_template("public/private.html", cat=album, photos=_album_photos(db, album, is_sub))
+    picked = {r["photo_id"] for r in db.execute(
+        "SELECT photo_id FROM proof_selections WHERE token = ?", (token,)).fetchall()}
+    return render_template("public/private.html", cat=album,
+                           photos=_album_photos(db, album, is_sub), picked=picked)
+
+
+@bp.route("/private/<token>/proof/<int:photo_id>", methods=["POST"])
+def private_proof(token, photo_id):
+    """Client proofing: toggle a favourite on a photo in an unlocked private album."""
+    db = get_db()
+    album, is_sub = _resolve_private_album(db, token)
+    if album is None or not _album_unlocked(album, token):
+        abort(404)
+    field = "subcategory_id" if is_sub else "category_id"
+    p = db.execute(f"SELECT 1 FROM photos WHERE id = ? AND {field} = ? AND published = 1",
+                   (photo_id, album["id"])).fetchone()
+    if p is None:
+        abort(404)
+    gone = db.execute("DELETE FROM proof_selections WHERE photo_id = ? AND token = ?",
+                      (photo_id, token)).rowcount
+    if not gone:
+        db.execute("INSERT INTO proof_selections(photo_id, token) VALUES (?, ?)",
+                   (photo_id, token))
+    db.commit()
+    return jsonify({"picked": not gone})
 
 
 @bp.route("/private/<token>/img/<int:photo_id>/<kind>")
@@ -496,3 +546,63 @@ def private_download(token):
                      download_name=(make_slug(album["name"]) or "album") + ".zip")
     resp.call_on_close(lambda: os.path.exists(tmp.name) and os.unlink(tmp.name))
     return resp
+
+
+# --------------------------- SEO & feeds ---------------------------
+
+@bp.route("/robots.txt")
+def robots():
+    return Response(
+        "User-agent: *\nDisallow: /admin\nDisallow: /private/\n"
+        "Sitemap: %s\n" % url_for("public.sitemap", _external=True),
+        mimetype="text/plain",
+    )
+
+
+@bp.route("/sitemap.xml")
+def sitemap():
+    db = get_db()
+    urls = [url_for("public.home", _external=True),
+            url_for("public.blog", _external=True),
+            url_for("public.about", _external=True),
+            url_for("public.contact", _external=True)]
+    for c in _category_chips(db):
+        urls.append(url_for("public.category", slug=c["slug"], _external=True))
+        for s in _subcategory_chips(db, c["id"]):
+            urls.append(url_for("public.subcategory", slug=c["slug"], subslug=s["slug"], _external=True))
+    for p in db.execute("SELECT p.id " + _VISIBLE).fetchall():
+        urls.append(url_for("public.photo", photo_id=p["id"], _external=True))
+    for r in db.execute("SELECT slug FROM posts WHERE published = 1").fetchall():
+        urls.append(url_for("public.post", slug=r["slug"], _external=True))
+    for r in db.execute("SELECT DISTINCT t.slug FROM tags t JOIN photo_tags pt ON pt.tag_id = t.id").fetchall():
+        urls.append(url_for("public.tag", slug=r["slug"], _external=True))
+    xml = ['<?xml version="1.0" encoding="UTF-8"?>',
+           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    xml += ["<url><loc>%s</loc></url>" % escape(u) for u in urls]
+    xml.append("</urlset>")
+    return Response("\n".join(xml), mimetype="application/xml")
+
+
+@bp.route("/blog/feed.xml")
+def feed():
+    db = get_db()
+    site = get_settings()
+    posts = db.execute(
+        "SELECT * FROM posts WHERE published = 1 "
+        "ORDER BY COALESCE(published_at, created_at) DESC, id DESC LIMIT 20"
+    ).fetchall()
+    items = []
+    for p in posts:
+        link = url_for("public.post", slug=p["slug"], _external=True)
+        items.append(
+            "<item><title>%s</title><link>%s</link><guid>%s</guid>"
+            "<description>%s</description><pubDate>%s</pubDate></item>"
+            % (escape(p["title"]), escape(link), escape(link),
+               escape(p["excerpt"] or ""), escape(p["published_at"] or p["created_at"] or ""))
+        )
+    rss = ('<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel>'
+           "<title>%s — Blog</title><link>%s</link><description>%s</description>%s"
+           "</channel></rss>"
+           % (escape(site.get("site_title", "")), escape(url_for("public.blog", _external=True)),
+              escape(site.get("tagline", "")), "".join(items)))
+    return Response(rss, mimetype="application/rss+xml")

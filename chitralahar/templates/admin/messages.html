@@ -1,0 +1,27 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Messages{% endblock %}
+{% block page_title %}Messages{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div class="msg-list">
+  {% for m in messages %}
+  <article class="msg {{ 'msg-unread' if not m.read }}">
+    <header class="msg-head">
+      <strong>{{ m.name or 'Anonymous' }}</strong>
+      {% if m.email %}<a href="mailto:{{ m.email }}">{{ m.email }}</a>{% endif %}
+      <span class="muted small">{{ m.created_at }}</span>
+      <form method="post" action="{{ url_for('admin.message_delete', msg_id=m.id) }}"
+            class="js-confirm inline msg-del" data-confirm="Delete this message?">
+        <button type="submit" class="linklike danger">Delete</button>
+      </form>
+    </header>
+    <p class="msg-body">{{ m.body }}</p>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state"><p class="empty-title">No messages yet.</p>
+<p class="muted">Messages sent from your public Contact page appear here.</p></div>
+{% endif %}
+{% endblock %}

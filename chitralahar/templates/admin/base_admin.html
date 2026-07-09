@@ -32,6 +32,7 @@
         <a href="{{ url_for('admin.posts') }}" class="{{ 'is-active' if ep in ['admin.posts', 'admin.post_new', 'admin.post_edit'] }}">Blog posts</a>
         <a href="{{ url_for('admin.about_edit') }}" class="{{ 'is-active' if ep == 'admin.about_edit' }}">About page</a>
         <a href="{{ url_for('admin.contact_edit') }}" class="{{ 'is-active' if ep == 'admin.contact_edit' }}">Contact page</a>
+        <a href="{{ url_for('admin.messages') }}" class="{{ 'is-active' if ep == 'admin.messages' }}">Messages{% if unread_messages %} <span class="nav-badge">{{ unread_messages }}</span>{% endif %}</a>
         <a href="{{ url_for('admin.menu') }}" class="{{ 'is-active' if ep == 'admin.menu' }}">Menu</a>
         <a href="{{ url_for('admin.templates') }}" class="{{ 'is-active' if ep == 'admin.templates' }}">Templates</a>
         <a href="{{ url_for('admin.settings') }}" class="{{ 'is-active' if ep == 'admin.settings' }}">Settings</a>

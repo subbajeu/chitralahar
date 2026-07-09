@@ -141,8 +141,51 @@
     </div>
   </div>
 
+  <div class="field-group">
+    <h2>Photo details</h2>
+    <label class="checkbox">
+      <input type="checkbox" name="show_exif" {{ 'checked' if values.show_exif }}>
+      <span>Show camera details (EXIF) on public photo pages</span>
+    </label>
+    <p class="muted small">Camera, lens, aperture, shutter, ISO — read from each photo
+      when uploaded. For photos uploaded before this feature, extract from the kept
+      originals below.</p>
+  </div>
+
   <div class="form-actions">
     <button type="submit" class="btn btn-primary">Save settings</button>
+  </div>
+</form>
+
+<form method="post" action="{{ url_for('admin.backfill_exif') }}" class="form-stack settings-form">
+  <div class="field-group">
+    <h2>Maintenance</h2>
+    <div class="field-row">
+      <button type="submit" class="btn">Extract EXIF from originals</button>
+      <a class="btn" href="{{ url_for('admin.backup') }}">Download full backup (ZIP)</a>
+    </div>
+    <p class="muted small">The backup contains your database and every uploaded image —
+      restore by unzipping into a fresh install.</p>
+  </div>
+</form>
+
+<form method="post" action="{{ url_for('admin.change_password') }}" class="form-stack settings-form">
+  <div class="field-group">
+    <h2>Account</h2>
+    <label>Current password
+      <input type="password" name="current_password" autocomplete="current-password" required>
+    </label>
+    <div class="field-row">
+      <label>New password
+        <input type="password" name="new_password" autocomplete="new-password" minlength="8" required>
+      </label>
+      <label>Confirm new password
+        <input type="password" name="confirm_password" autocomplete="new-password" minlength="8" required>
+      </label>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Change password</button>
+    </div>
   </div>
 </form>
 {% endblock %}

@@ -40,6 +40,7 @@
      target="_blank" rel="noopener">Open</a>
   {% if active_album.passkey %}<span class="share-bar-tag">passphrase set</span>{% endif %}
   {% if active_album.allow_download %}<span class="share-bar-tag">download on</span>{% endif %}
+  {% if proofed %}<span class="share-bar-tag tag-proof">♥ {{ proofed|length }} client pick{{ 's' if proofed|length != 1 }}</span>{% endif %}
   <a class="share-bar-manage" href="{{ url_for('admin.categories') }}">Share settings &rarr;</a>
 </div>
 {% endif %}
@@ -105,6 +106,7 @@
         <div class="photo-tile-img">
           <img src="{{ url_for('static', filename='uploads/thumbs/' ~ p.thumb_filename) }}" alt="{{ p.title or p.orig_name }}">
           <span class="sel-tick" aria-hidden="true">✓</span>
+          {% if p.id in proofed %}<span class="proof-flag" title="Client pick">♥</span>{% endif %}
           <span class="tile-tools">
             <button class="toggle-btn star-btn {{ 'is-on' if p.featured }}" type="button"
                     data-toggle-url="{{ url_for('admin.photo_toggle_featured', photo_id=p.id) }}"

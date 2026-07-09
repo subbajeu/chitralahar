@@ -1,5 +1,6 @@
 """Admin panel: photos, categories, blog posts, the about page, and settings."""
 import io
+import os
 import secrets
 from pathlib import Path
 
@@ -177,6 +178,12 @@ def photos():
         active_album = db.execute("SELECT * FROM subcategories WHERE id = ?", (sub,)).fetchone()
     elif cat is not None:
         active_album = db.execute("SELECT * FROM categories WHERE id = ?", (cat,)).fetchone()
+    # Client proofing picks for that album's share link.
+    proofed = set()
+    if active_album and active_album["private"] and active_album["share_token"]:
+        proofed = {r["photo_id"] for r in db.execute(
+            "SELECT photo_id FROM proof_selections WHERE token = ?",
+            (active_album["share_token"],)).fetchall()}
     return render_template(
         "admin/photos.html",
         photos=items,
@@ -186,6 +193,7 @@ def photos():
         browse_subs=browse_subs,
         active=active,
         active_album=active_album,
+        proofed=proofed,
         total=db.execute("SELECT COUNT(*) c FROM photos").fetchone()["c"],
         uncat_count=db.execute(
             "SELECT COUNT(*) c FROM photos WHERE category_id IS NULL"
@@ -228,13 +236,13 @@ def photos_upload():
             continue
         pid = db.execute(
             """INSERT INTO photos
-                   (title, filename, thumb_filename, orig_name, orig_filename,
+                   (title, filename, thumb_filename, orig_name, orig_filename, exif,
                     width, height, sort_order, category_id, subcategory_id, published)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)""",
             (
                 "", info["filename"], info["thumb_filename"], info["orig_name"],
-                info.get("orig_filename", ""), info["width"], info["height"],
-                order, cat_id, sub_id,
+                info.get("orig_filename", ""), info.get("exif", ""),
+                info["width"], info["height"], order, cat_id, sub_id,
             ),
         ).lastrowid
         if tags_raw:
@@ -1164,6 +1172,7 @@ def settings():
                 val = _safe_external_url(val)  # block javascript:/data: in href output
             set_setting(key, val)
         set_setting("watermark_enabled", "1" if request.form.get("watermark_enabled") else "")
+        set_setting("show_exif", "1" if request.form.get("show_exif") else "")
         # Validated watermark choices.
         wt = (request.form.get("watermark_type") or "text").strip()
         set_setting("watermark_type", wt if wt in ("text", "image") else "text")
@@ -1244,6 +1253,122 @@ def watermark_preview():
     resp = send_file(buf, mimetype="image/jpeg")
     resp.headers["Cache-Control"] = "no-store"
     return resp
+
+
+# --------------------------- Messages (contact inbox) ---------------------------
+
+@bp.route("/messages")
+@login_required
+def messages():
+    db = get_db()
+    items = db.execute("SELECT * FROM messages ORDER BY id DESC").fetchall()
+    db.execute("UPDATE messages SET read = 1 WHERE read = 0")  # opening the inbox marks all read
+    db.commit()
+    return render_template("admin/messages.html", messages=items)
+
+
+@bp.route("/messages/<int:msg_id>/delete", methods=["POST"])
+@login_required
+def message_delete(msg_id):
+    db = get_db()
+    db.execute("DELETE FROM messages WHERE id = ?", (msg_id,))
+    db.commit()
+    flash("Message deleted.", "success")
+    return redirect(url_for("admin.messages"))
+
+
+# --------------------------- Account ---------------------------
+
+@bp.route("/account/password", methods=["POST"])
+@login_required
+def change_password():
+    from flask import session
+    from werkzeug.security import check_password_hash
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+    current = request.form.get("current_password") or ""
+    new = request.form.get("new_password") or ""
+    confirm = request.form.get("confirm_password") or ""
+    if not check_password_hash(user["password_hash"], current):
+        flash("Current password is incorrect.", "error")
+    elif len(new) < 8:
+        flash("New password must be at least 8 characters.", "error")
+    elif new != confirm:
+        flash("New passwords do not match.", "error")
+    else:
+        db.execute("UPDATE users SET password_hash = ? WHERE id = ?",
+                   (generate_password_hash(new, method="pbkdf2:sha256"), user["id"]))
+        db.commit()
+        flash("Password changed.", "success")
+    return redirect(url_for("admin.settings"))
+
+
+# --------------------------- Backup ---------------------------
+
+@bp.route("/backup")
+@login_required
+def backup():
+    """One-click site backup: a consistent DB snapshot + every uploaded file."""
+    import sqlite3
+    import tempfile
+    import zipfile
+
+    tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
+    try:
+        # sqlite backup API gives a consistent copy even mid-write (WAL-safe)
+        db_snap = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        db_snap.close()
+        dest = sqlite3.connect(db_snap.name)
+        get_db().backup(dest)
+        dest.close()
+
+        root = Path(current_app.config["UPLOAD_FOLDER"])
+        with zipfile.ZipFile(tmp, "w", zipfile.ZIP_STORED) as zf:
+            zf.write(db_snap.name, "instance/chitralahar.db")
+            for sub in ("photos", "thumbs", "misc", "originals"):  # wm/ is a regenerable cache
+                d = root / sub
+                if d.is_dir():
+                    for f in d.iterdir():
+                        if f.is_file() and not f.name.startswith("."):
+                            zf.write(f, "uploads/%s/%s" % (sub, f.name))
+        tmp.flush()
+        tmp.close()
+        os.unlink(db_snap.name)
+    except Exception:
+        tmp.close()
+        os.unlink(tmp.name)
+        raise
+    resp = send_file(tmp.name, mimetype="application/zip", as_attachment=True,
+                     download_name="chitralahar-backup.zip")
+    resp.call_on_close(lambda: os.path.exists(tmp.name) and os.unlink(tmp.name))
+    return resp
+
+
+@bp.route("/photos/backfill-exif", methods=["POST"])
+@login_required
+def backfill_exif():
+    """Extract EXIF from kept originals for photos that predate EXIF capture."""
+    import json as _json
+    from PIL import Image
+    from .images import extract_exif
+
+    db = get_db()
+    root = Path(current_app.config["UPLOAD_FOLDER"]) / "originals"
+    n = 0
+    for p in db.execute("SELECT id, orig_filename FROM photos WHERE exif = '' AND orig_filename != ''").fetchall():
+        src = root / p["orig_filename"]
+        if not src.exists():
+            continue
+        try:
+            info = extract_exif(Image.open(src))
+        except Exception:  # noqa: BLE001
+            continue
+        if info:
+            db.execute("UPDATE photos SET exif = ? WHERE id = ?", (_json.dumps(info), p["id"]))
+            n += 1
+    db.commit()
+    flash(f"EXIF extracted for {n} photo{'s' if n != 1 else ''}.", "success")
+    return redirect(url_for("admin.settings"))
 
 
 @bp.route("/home", methods=["GET", "POST"])

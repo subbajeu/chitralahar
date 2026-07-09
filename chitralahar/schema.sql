@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS photos (
     thumb_filename TEXT NOT NULL,            -- gallery thumbnail
     orig_name      TEXT NOT NULL DEFAULT '', -- original upload filename (as uploaded)
     orig_filename  TEXT NOT NULL DEFAULT '', -- kept full-resolution original on disk
+    exif           TEXT NOT NULL DEFAULT '', -- JSON: camera/lens/exposure metadata
     width          INTEGER NOT NULL DEFAULT 0,
     height         INTEGER NOT NULL DEFAULT 0,
     featured       INTEGER NOT NULL DEFAULT 0,
@@ -112,6 +113,24 @@ CREATE TABLE IF NOT EXISTS pages (
     body           TEXT NOT NULL DEFAULT '',
     image_filename TEXT,
     updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Contact-form messages (shown in the admin inbox)
+CREATE TABLE IF NOT EXISTS messages (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT NOT NULL DEFAULT '',
+    email      TEXT NOT NULL DEFAULT '',
+    body       TEXT NOT NULL DEFAULT '',
+    read       INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Client proofing: photos a viewer of a private share link marked as favourites.
+CREATE TABLE IF NOT EXISTS proof_selections (
+    photo_id   INTEGER NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
+    token      TEXT NOT NULL,             -- the album share_token the client used
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (photo_id, token)
 );
 
 -- Site-wide settings (key/value)

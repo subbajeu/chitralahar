@@ -32,6 +32,7 @@ DEFAULT_SETTINGS = {
     "watermark_scale": "18",     # image-watermark width as a % of the photo width
     "watermark_position": "br",  # br | bl | tr | tl | center | tiled
     "watermark_opacity": "35",   # percent
+    "show_exif": "",             # "1" shows camera/EXIF details on public photo pages
     "template": "minimal",
 }
 
@@ -95,6 +96,8 @@ def _migrate(db):
         )
     if "orig_filename" not in cols:
         db.execute("ALTER TABLE photos ADD COLUMN orig_filename TEXT NOT NULL DEFAULT ''")
+    if "exif" not in cols:
+        db.execute("ALTER TABLE photos ADD COLUMN exif TEXT NOT NULL DEFAULT ''")
 
     # Fold any legacy free-text `category` values into real category rows.
     if "category" in cols:

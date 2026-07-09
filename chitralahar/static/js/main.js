@@ -176,3 +176,17 @@
     start();
   }
 })();
+
+/* Client proofing — heart toggles on private-album tiles. */
+(function () {
+  "use strict";
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest(".proof-btn");
+    if (!btn) return;
+    e.preventDefault();
+    fetch(btn.getAttribute("data-proof-url"), { method: "POST", credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { btn.classList.toggle("picked", !!d.picked); })
+      .catch(function () {});
+  });
+})();

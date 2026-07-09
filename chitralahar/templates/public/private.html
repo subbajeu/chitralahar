@@ -6,6 +6,7 @@
   <p class="private-tag">Private gallery</p>
   <h1 class="page-title">{{ cat.name }}</h1>
   {% if cat.description %}<p class="page-sub">{{ cat.description }}</p>{% endif %}
+  {% if photos %}<p class="muted-text proof-hint">Tap ♥ on the photos you like — your picks are saved for the photographer.</p>{% endif %}
   {% if cat.allow_download and photos %}
   <p class="album-download">
     <a class="btn btn-primary" href="{{ url_for('public.private_download', token=cat.share_token) }}" rel="nofollow">
@@ -25,11 +26,16 @@
     {% elif ar >= 1.4 %}{% set tile = 'is-wide' %}
     {% else %}{% set tile = '' %}{% endif %}
     <figure class="g-item {{ tile }}">
+      <button type="button" class="proof-btn {{ 'picked' if p.id in picked }}"
+              data-proof-url="{{ url_for('public.private_proof', token=cat.share_token, photo_id=p.id) }}"
+              aria-label="Mark as favourite" title="Mark as favourite">♥</button>
       <a href="{{ url_for('public.private_image', token=cat.share_token, photo_id=p.id, kind='full') }}"
          class="g-link"
          data-full="{{ url_for('public.private_image', token=cat.share_token, photo_id=p.id, kind='full') }}"
          data-cap="{{ (p.title ~ ('  ·  ' ~ p.caption if p.caption else '')) if p.title else p.caption }}">
         <img src="{{ url_for('public.private_image', token=cat.share_token, photo_id=p.id, kind='thumb') }}"
+             srcset="{{ url_for('public.private_image', token=cat.share_token, photo_id=p.id, kind='thumb') }} 800w, {{ url_for('public.private_image', token=cat.share_token, photo_id=p.id, kind='full') }} 2200w"
+             sizes="(max-width: 460px) 100vw, (max-width: 1024px) 50vw, 25vw"
              alt="{{ p.title or 'Photograph' }}"
              width="{{ p.width or 800 }}" height="{{ p.height or 600 }}" loading="lazy">
         {% if p.title %}<figcaption class="g-cap">{{ p.title }}</figcaption>{% endif %}
