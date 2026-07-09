@@ -539,6 +539,7 @@ a.tree-row:hover { background: var(--bg-sink); color: var(--ink); }
 }
 .video-row { display: flex; align-items: center; gap: 12px; }
 .video-row .video-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .9rem; }
+.video-share { flex: 0 1 300px; width: auto; }
 .video-upload { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .video-upload input[type="text"] { flex: 1; min-width: 140px; }
 

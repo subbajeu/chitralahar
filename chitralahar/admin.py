@@ -1367,6 +1367,31 @@ def video_preview(video_id):
     return redirect(request.referrer or url_for("admin.photos"))
 
 
+@bp.route("/videos/<int:video_id>/share", methods=["POST"])
+@login_required
+def video_share(video_id):
+    db = get_db()
+    v = db.execute("SELECT * FROM videos WHERE id = ?", (video_id,)).fetchone()
+    if v is None:
+        abort(404)
+    if not v["share_token"]:
+        db.execute("UPDATE videos SET share_token = ? WHERE id = ?",
+                   (secrets.token_urlsafe(9), video_id))
+        db.commit()
+    flash("Video share link created — copy it from the list.", "success")
+    return redirect(request.referrer or url_for("admin.photos"))
+
+
+@bp.route("/videos/<int:video_id>/unshare", methods=["POST"])
+@login_required
+def video_unshare(video_id):
+    db = get_db()
+    db.execute("UPDATE videos SET share_token = NULL WHERE id = ?", (video_id,))
+    db.commit()
+    flash("Video share link revoked.", "success")
+    return redirect(request.referrer or url_for("admin.photos"))
+
+
 @bp.route("/videos/<int:video_id>/delete", methods=["POST"])
 @login_required
 def video_delete(video_id):

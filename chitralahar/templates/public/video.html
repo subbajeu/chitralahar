@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ v.title or v.orig_name }} — {{ site.site_title }}{% endblock %}
+
+{% block content %}
+<section class="page-intro wrap">
+  <p class="private-tag">Shared video</p>
+  <h1 class="page-title">{{ v.title or v.orig_name }}</h1>
+</section>
+
+<div class="wrap wrap-read">
+  {% if v.preview_status == 'ready' %}
+  <video controls preload="metadata" playsinline class="shared-video"
+         src="{{ url_for('public.shared_video_watch', token=token) }}"></video>
+  {% endif %}
+  <div class="video-list">
+    <a class="video-card" href="{{ url_for('public.shared_video_download', token=token) }}">
+      <span class="video-icon" aria-hidden="true">▶</span>
+      <span class="video-name">{{ v.orig_name }}</span>
+      <span class="video-size muted-text">{{ v.size | filesizeformat }}</span>
+      <span class="btn btn-sm">Download original</span>
+    </a>
+  </div>
+</div>
+{% endblock %}

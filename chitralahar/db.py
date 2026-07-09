@@ -106,6 +106,9 @@ def _migrate(db):
             db.execute("ALTER TABLE videos ADD COLUMN preview_filename TEXT NOT NULL DEFAULT ''")
         if "preview_status" not in vid_cols:
             db.execute("ALTER TABLE videos ADD COLUMN preview_status TEXT NOT NULL DEFAULT ''")
+        if "share_token" not in vid_cols:
+            db.execute("ALTER TABLE videos ADD COLUMN share_token TEXT")
+        db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_video_token ON videos(share_token)")
 
     # Two-factor auth columns on users.
     user_cols = {r["name"] for r in db.execute("PRAGMA table_info(users)").fetchall()}

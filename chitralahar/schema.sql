@@ -127,6 +127,7 @@ CREATE TABLE IF NOT EXISTS videos (
     size           INTEGER NOT NULL DEFAULT 0,
     preview_filename TEXT NOT NULL DEFAULT '', -- 720p streamable preview (made by ffmpeg)
     preview_status TEXT NOT NULL DEFAULT '',   -- '' none | processing | ready | failed
+    share_token    TEXT,                       -- direct share link for just this video
     category_id    INTEGER REFERENCES categories(id) ON DELETE SET NULL,
     subcategory_id INTEGER REFERENCES subcategories(id) ON DELETE SET NULL,
     created_at     TEXT NOT NULL DEFAULT (datetime('now'))

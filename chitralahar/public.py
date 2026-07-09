@@ -590,6 +590,41 @@ def private_download(token):
     return resp
 
 
+# --------------------------- Single shared video ---------------------------
+
+def _shared_video(db, token):
+    v = db.execute("SELECT * FROM videos WHERE share_token = ?", (token,)).fetchone()
+    if v is None:
+        abort(404)
+    return v
+
+
+@bp.route("/v/<token>")
+def shared_video(token):
+    return render_template("public/video.html", v=_shared_video(get_db(), token), token=token)
+
+
+@bp.route("/v/<token>/download")
+def shared_video_download(token):
+    v = _shared_video(get_db(), token)
+    path = Path(current_app.config["UPLOAD_FOLDER"]) / "videos" / v["filename"]
+    if not path.exists():
+        abort(404)
+    return send_file(path, as_attachment=True, conditional=True,
+                     download_name=v["orig_name"] or v["filename"])
+
+
+@bp.route("/v/<token>/watch")
+def shared_video_watch(token):
+    v = _shared_video(get_db(), token)
+    if v["preview_status"] != "ready" or not v["preview_filename"]:
+        abort(404)
+    path = Path(current_app.config["UPLOAD_FOLDER"]) / "videos" / v["preview_filename"]
+    if not path.exists():
+        abort(404)
+    return send_file(path, mimetype="video/mp4", conditional=True)
+
+
 # --------------------------- SEO & feeds ---------------------------
 
 @bp.route("/robots.txt")
