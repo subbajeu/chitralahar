@@ -177,6 +177,21 @@
   }
 })();
 
+/* Private-album video preview player. */
+(function () {
+  "use strict";
+  var player = document.getElementById("videoPlayer");
+  if (!player) return;
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest(".watch-btn");
+    if (!btn) return;
+    player.hidden = false;
+    player.src = btn.getAttribute("data-src");
+    player.play();
+    player.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+})();
+
 /* Client proofing — heart toggles on private-album tiles. */
 (function () {
   "use strict";

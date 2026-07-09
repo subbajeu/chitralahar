@@ -105,10 +105,47 @@ def login():
         else:
             reset(key)
             session.clear()
+            if user["totp_secret"]:
+                # Password OK but 2FA is on: park the login until a code is given.
+                session["2fa_user"] = user["id"]
+                return redirect(url_for("auth.login_2fa", next=request.args.get("next", "")))
             session["user_id"] = user["id"]
             session.permanent = True
             return redirect(_safe_next(request.args.get("next", "")))
     return render_template("admin/login.html")
+
+
+@bp.route("/admin/login/2fa", methods=["GET", "POST"])
+def login_2fa():
+    from .totp import verify
+    uid = session.get("2fa_user")
+    if uid is None:
+        return redirect(url_for("auth.login"))
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
+    if user is None or not user["totp_secret"]:
+        session.clear()
+        return redirect(url_for("auth.login"))
+    if request.method == "POST":
+        ip = request.remote_addr or "?"
+        key = "2fa:" + ip
+        if too_many(key):
+            current_app.logger.warning("Rate-limited 2FA from %s", ip)
+            flash("Too many attempts. Please wait a few minutes.", "error")
+            return render_template("admin/login_2fa.html"), 429
+        counter = verify(user["totp_secret"], request.form.get("code"), user["totp_counter"])
+        if counter:
+            reset(key)
+            db.execute("UPDATE users SET totp_counter = ? WHERE id = ?", (counter, uid))
+            db.commit()
+            session.clear()
+            session["user_id"] = uid
+            session.permanent = True
+            return redirect(_safe_next(request.args.get("next", "")))
+        record_failure(key)
+        current_app.logger.warning("Failed 2FA code for user %s from %s", user["username"], ip)
+        flash("That code isn't right — check your authenticator app.", "error")
+    return render_template("admin/login_2fa.html")
 
 
 @bp.route("/admin/logout", methods=["POST", "GET"])

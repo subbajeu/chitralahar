@@ -45,6 +45,37 @@
 </div>
 {% endif %}
 
+{% if active_album %}
+<div class="video-admin">
+  <span class="share-bar-label">Videos in this album ({{ album_videos|length }})</span>
+  {% for v in album_videos %}
+  <div class="video-row">
+    <span class="video-name">{{ v.title or v.orig_name }}</span>
+    <span class="muted small">{{ v.size | filesizeformat }}</span>
+    {% if v.preview_status == 'ready' %}<span class="share-bar-tag">streamable</span>
+    {% elif v.preview_status == 'processing' %}<span class="share-bar-tag">preview processing…</span>
+    {% elif ffmpeg_ok %}
+    <form method="post" action="{{ url_for('admin.video_preview', video_id=v.id) }}" class="inline">
+      <button type="submit" class="linklike">{{ 'Retry preview' if v.preview_status == 'failed' else 'Make streamable' }}</button>
+    </form>
+    {% endif %}
+    <form method="post" action="{{ url_for('admin.video_delete', video_id=v.id) }}"
+          class="js-confirm inline" data-confirm="Delete this video?">
+      <button type="submit" class="linklike danger">Delete</button>
+    </form>
+  </div>
+  {% endfor %}
+  <form method="post" action="{{ url_for('admin.videos_upload') }}" enctype="multipart/form-data" class="video-upload">
+    <input type="hidden" name="category_id" value="{{ active.cat or '' }}">
+    <input type="hidden" name="subcategory_id" value="{{ active.sub or '' }}">
+    <input type="file" name="video" accept="video/*" required>
+    <input type="text" name="title" placeholder="Title (optional)">
+    <button type="submit" class="btn btn-sm btn-primary">Upload video</button>
+  </form>
+  <p class="muted small">Videos are delivered through the private share link — clients download the original{% if ffmpeg_ok %} and can stream a 720p preview once it's generated{% else %}; install <code>ffmpeg</code> on the server to also offer a streamable 720p preview{% endif %}. Not shown on the public site or in the album ZIP.</p>
+</div>
+{% endif %}
+
 <div class="photos-layout {{ 'no-tree' if not browse_cats }}">
   {% if browse_cats %}
   <aside class="photo-tree" aria-label="Browse photos by category">

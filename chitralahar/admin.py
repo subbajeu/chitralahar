@@ -184,6 +184,13 @@ def photos():
         proofed = {r["photo_id"] for r in db.execute(
             "SELECT photo_id FROM proof_selections WHERE token = ?",
             (active_album["share_token"],)).fetchall()}
+    # Videos attached to the selected album (download-only, delivered via share link).
+    album_videos = []
+    if active_album:
+        field = "subcategory_id" if sub is not None else "category_id"
+        album_videos = db.execute(
+            f"SELECT * FROM videos WHERE {field} = ? ORDER BY id DESC",
+            (active_album["id"],)).fetchall()
     return render_template(
         "admin/photos.html",
         photos=items,
@@ -194,6 +201,8 @@ def photos():
         active=active,
         active_album=active_album,
         proofed=proofed,
+        album_videos=album_videos,
+        ffmpeg_ok=ffmpeg_available(),
         total=db.execute("SELECT COUNT(*) c FROM photos").fetchone()["c"],
         uncat_count=db.execute(
             "SELECT COUNT(*) c FROM photos WHERE category_id IS NULL"
@@ -1198,7 +1207,16 @@ def settings():
         clear_watermark_cache()  # regenerate with the new settings on next view
         flash("Settings saved.", "success")
         return redirect(url_for("admin.settings"))
-    return render_template("admin/settings.html", values=get_settings(), fonts=available_fonts())
+    from flask import session
+    from .totp import otpauth_uri
+    user = get_db().execute("SELECT * FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+    pending = session.get("totp_pending")
+    return render_template(
+        "admin/settings.html", values=get_settings(), fonts=available_fonts(),
+        twofa_on=bool(user["totp_secret"]),
+        totp_pending=pending,
+        totp_uri=otpauth_uri(pending, user["username"]) if pending else None,
+    )
 
 
 def _watermark_preview_base():
@@ -1255,6 +1273,120 @@ def watermark_preview():
     return resp
 
 
+# --------------------------- Videos (download + streamable preview) ---------------------------
+
+def ffmpeg_available():
+    import shutil
+    return shutil.which("ffmpeg") is not None
+
+
+def _start_preview(db_path, video_id, src, out):
+    """Transcode a 720p ~2.5Mbps faststart MP4 preview in a background thread.
+    The thread opens its own DB connection (request connection dies with the request)."""
+    import sqlite3
+    import subprocess
+    import threading
+
+    def work():
+        cmd = ["ffmpeg", "-y", "-i", str(src),
+               "-vf", "scale=-2:min(720,ih)", "-c:v", "libx264", "-crf", "26",
+               "-preset", "veryfast", "-movflags", "+faststart",
+               "-c:a", "aac", "-b:a", "128k", str(out)]
+        try:
+            res = subprocess.run(cmd, capture_output=True, timeout=3600)
+            ok = res.returncode == 0 and Path(out).exists()
+        except Exception:  # noqa: BLE001
+            ok = False
+        conn = sqlite3.connect(db_path, timeout=30)
+        conn.execute("UPDATE videos SET preview_status = ?, preview_filename = ? WHERE id = ?",
+                     ("ready" if ok else "failed", Path(out).name if ok else "", video_id))
+        conn.commit()
+        conn.close()
+        if not ok:
+            Path(out).unlink(missing_ok=True)
+
+    # ponytail: worker-killed-mid-transcode leaves status 'processing'; the
+    # Retry button in admin covers it. A job queue is overkill for one admin.
+    threading.Thread(target=work, daemon=True).start()
+
+
+def _queue_preview(db, v):
+    """Mark a video processing and kick off the transcode (no-op without ffmpeg)."""
+    if not ffmpeg_available():
+        return False
+    root = Path(current_app.config["UPLOAD_FOLDER"]) / "videos"
+    out = root / ("prev_" + Path(v["filename"]).stem + ".mp4")
+    db.execute("UPDATE videos SET preview_status = 'processing' WHERE id = ?", (v["id"],))
+    db.commit()
+    _start_preview(current_app.config["DATABASE"], v["id"], root / v["filename"], out)
+    return True
+
+
+@bp.route("/videos/upload", methods=["POST"])
+@login_required
+def videos_upload():
+    import uuid
+    db = get_db()
+    cat_id, sub_id = resolve_taxonomy(
+        db, request.form.get("category_id"), request.form.get("subcategory_id")
+    )
+    f = request.files.get("video")
+    ext = (f.filename or "").rsplit(".", 1)[-1].lower() if f and "." in (f.filename or "") else ""
+    if not f or ext not in current_app.config["ALLOWED_VIDEO_EXTENSIONS"]:
+        flash("Choose a video file (mp4, mov, m4v, webm, mkv, avi).", "error")
+        return redirect(request.referrer or url_for("admin.photos"))
+    name = "%s.%s" % (uuid.uuid4().hex, ext)
+    path = Path(current_app.config["UPLOAD_FOLDER"]) / "videos" / name
+    f.save(path)  # werkzeug streams to disk — large files don't sit in RAM
+    vid = db.execute(
+        "INSERT INTO videos(title, filename, orig_name, size, category_id, subcategory_id) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        ((request.form.get("title") or "").strip(), name, f.filename or "video",
+         path.stat().st_size, cat_id, sub_id),
+    ).lastrowid
+    db.commit()
+    v = db.execute("SELECT * FROM videos WHERE id = ?", (vid,)).fetchone()
+    if _queue_preview(db, v):
+        flash("Video uploaded — generating a streamable preview in the background.", "success")
+    else:
+        flash("Video uploaded — clients can download it from the album's share link.", "success")
+    return redirect(request.referrer or url_for("admin.photos"))
+
+
+@bp.route("/videos/<int:video_id>/preview", methods=["POST"])
+@login_required
+def video_preview(video_id):
+    db = get_db()
+    v = db.execute("SELECT * FROM videos WHERE id = ?", (video_id,)).fetchone()
+    if v is None:
+        abort(404)
+    if _queue_preview(db, v):
+        flash("Generating preview…", "success")
+    else:
+        flash("ffmpeg isn't installed on the server, so previews can't be generated.", "error")
+    return redirect(request.referrer or url_for("admin.photos"))
+
+
+@bp.route("/videos/<int:video_id>/delete", methods=["POST"])
+@login_required
+def video_delete(video_id):
+    db = get_db()
+    v = db.execute("SELECT * FROM videos WHERE id = ?", (video_id,)).fetchone()
+    if v is None:
+        abort(404)
+    root = Path(current_app.config["UPLOAD_FOLDER"]) / "videos"
+    try:
+        (root / v["filename"]).unlink(missing_ok=True)
+        if v["preview_filename"]:
+            (root / v["preview_filename"]).unlink(missing_ok=True)
+    except OSError:
+        pass
+    db.execute("DELETE FROM videos WHERE id = ?", (video_id,))
+    db.commit()
+    flash("Video deleted.", "success")
+    return redirect(request.referrer or url_for("admin.photos"))
+
+
 # --------------------------- Messages (contact inbox) ---------------------------
 
 @bp.route("/messages")
@@ -1301,6 +1433,50 @@ def change_password():
         db.commit()
         flash("Password changed.", "success")
     return redirect(url_for("admin.settings"))
+
+
+@bp.route("/account/2fa/enable", methods=["POST"])
+@login_required
+def twofa_enable():
+    from flask import session
+    from .totp import new_secret
+    session["totp_pending"] = new_secret()
+    return redirect(url_for("admin.settings") + "#twofa")
+
+
+@bp.route("/account/2fa/confirm", methods=["POST"])
+@login_required
+def twofa_confirm():
+    from flask import session
+    from .totp import verify
+    secret = session.get("totp_pending")
+    counter = verify(secret or "", request.form.get("code"))
+    if not counter:
+        flash("That code didn't match — scan/enter the secret again and retry.", "error")
+        return redirect(url_for("admin.settings") + "#twofa")
+    db = get_db()
+    db.execute("UPDATE users SET totp_secret = ?, totp_counter = ? WHERE id = ?",
+               (secret, counter, session["user_id"]))
+    db.commit()
+    session.pop("totp_pending", None)
+    flash("Two-factor authentication is ON. You'll be asked for a code at sign-in.", "success")
+    return redirect(url_for("admin.settings") + "#twofa")
+
+
+@bp.route("/account/2fa/disable", methods=["POST"])
+@login_required
+def twofa_disable():
+    from flask import session
+    from werkzeug.security import check_password_hash
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+    if not check_password_hash(user["password_hash"], request.form.get("password") or ""):
+        flash("Password is incorrect — 2FA stays on.", "error")
+    else:
+        db.execute("UPDATE users SET totp_secret = '', totp_counter = 0 WHERE id = ?", (user["id"],))
+        db.commit()
+        flash("Two-factor authentication is off.", "success")
+    return redirect(url_for("admin.settings") + "#twofa")
 
 
 # --------------------------- Backup ---------------------------

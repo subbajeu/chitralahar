@@ -25,6 +25,7 @@ class Config:
     ALLOWED_EXTENSIONS = {
         "jpg", "jpeg", "png", "webp", "gif", "tif", "tiff", "bmp", "heic", "heif",
     }
+    ALLOWED_VIDEO_EXTENSIONS = {"mp4", "mov", "m4v", "webm", "mkv", "avi"}
 
     # --- Image processing (long-edge pixels) ---
     THUMB_SIZE = 800      # gallery grid thumbnails

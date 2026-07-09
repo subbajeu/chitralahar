@@ -188,6 +188,43 @@
     </div>
   </div>
 </form>
+
+<div class="form-stack settings-form" id="twofa">
+  <div class="field-group">
+    <h2>Two-factor authentication</h2>
+    {% if twofa_on %}
+    <p><span class="badge badge-on">Enabled</span> — sign-in asks for a code from your authenticator app.</p>
+    <form method="post" action="{{ url_for('admin.twofa_disable') }}">
+      <label>Confirm your password to turn 2FA off
+        <input type="password" name="password" autocomplete="current-password" required>
+      </label>
+      <div class="form-actions"><button type="submit" class="btn btn-danger">Turn off 2FA</button></div>
+    </form>
+    {% elif totp_pending %}
+    <p class="muted small">1. In your authenticator app (Google Authenticator, Aegis, 1Password…),
+      choose <strong>Enter a setup key</strong> and add:</p>
+    <div class="share-copy">
+      <input type="text" class="share-link" readonly value="{{ totp_pending }}">
+      <button type="button" class="btn btn-sm copy-btn" data-copy>Copy</button>
+    </div>
+    <p class="muted small">On a phone you can also just tap:
+      <a href="{{ totp_uri }}">open in authenticator app</a>. Account: your username, type: time-based.</p>
+    <form method="post" action="{{ url_for('admin.twofa_confirm') }}">
+      <label>2. Enter the 6-digit code the app shows, to confirm it works
+        <input type="text" name="code" inputmode="numeric" maxlength="7" autocomplete="one-time-code" required>
+      </label>
+      <div class="form-actions"><button type="submit" class="btn btn-primary">Verify &amp; enable 2FA</button></div>
+    </form>
+    {% else %}
+    <p class="muted small">Add a second step to admin sign-in: a 6-digit code from an
+      authenticator app on your phone. Locked out? Clear <code>totp_secret</code> in the
+      <code>users</code> table of <code>instance/chitralahar.db</code> on the server.</p>
+    <form method="post" action="{{ url_for('admin.twofa_enable') }}">
+      <button type="submit" class="btn btn-primary">Set up 2FA</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}

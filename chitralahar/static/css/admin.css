@@ -532,6 +532,16 @@ a.tree-row:hover { background: var(--bg-sink); color: var(--ink); }
 .dz-bar { display: block; height: 4px; margin-top: 8px; border-radius: 999px; background: var(--bg-sink); overflow: hidden; }
 .dz-bar-fill { display: block; height: 100%; width: 0; background: var(--ink); border-radius: 999px; transition: width .2s var(--ease); }
 
+/* Album videos manager on the Photos browser */
+.video-admin {
+  margin: 0 0 18px; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px;
+  background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.video-row { display: flex; align-items: center; gap: 12px; }
+.video-row .video-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .9rem; }
+.video-upload { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.video-upload input[type="text"] { flex: 1; min-width: 140px; }
+
 /* Share-link bar on the Photos browser when a private album is selected */
 .share-bar {
   display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px;

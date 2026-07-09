@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS users (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     username      TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
+    totp_secret   TEXT NOT NULL DEFAULT '',  -- 2FA: base32 TOTP secret ('' = 2FA off)
+    totp_counter  INTEGER NOT NULL DEFAULT 0, -- last accepted code's time-step (replay guard)
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -113,6 +115,21 @@ CREATE TABLE IF NOT EXISTS pages (
     body           TEXT NOT NULL DEFAULT '',
     image_filename TEXT,
     updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Videos: download-only files delivered through private albums (never streamed
+-- publicly). Kept as uploaded — no processing.
+CREATE TABLE IF NOT EXISTS videos (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    title          TEXT NOT NULL DEFAULT '',
+    filename       TEXT NOT NULL,             -- stored name (uuid.ext) in uploads/videos/
+    orig_name      TEXT NOT NULL DEFAULT '',
+    size           INTEGER NOT NULL DEFAULT 0,
+    preview_filename TEXT NOT NULL DEFAULT '', -- 720p streamable preview (made by ffmpeg)
+    preview_status TEXT NOT NULL DEFAULT '',   -- '' none | processing | ready | failed
+    category_id    INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+    subcategory_id INTEGER REFERENCES subcategories(id) ON DELETE SET NULL,
+    created_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Contact-form messages (shown in the admin inbox)

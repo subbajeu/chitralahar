@@ -99,6 +99,22 @@ def _migrate(db):
     if "exif" not in cols:
         db.execute("ALTER TABLE photos ADD COLUMN exif TEXT NOT NULL DEFAULT ''")
 
+    # Streamable video previews (added after the videos table shipped).
+    vid_cols = {r["name"] for r in db.execute("PRAGMA table_info(videos)").fetchall()}
+    if vid_cols:
+        if "preview_filename" not in vid_cols:
+            db.execute("ALTER TABLE videos ADD COLUMN preview_filename TEXT NOT NULL DEFAULT ''")
+        if "preview_status" not in vid_cols:
+            db.execute("ALTER TABLE videos ADD COLUMN preview_status TEXT NOT NULL DEFAULT ''")
+
+    # Two-factor auth columns on users.
+    user_cols = {r["name"] for r in db.execute("PRAGMA table_info(users)").fetchall()}
+    if user_cols:
+        if "totp_secret" not in user_cols:
+            db.execute("ALTER TABLE users ADD COLUMN totp_secret TEXT NOT NULL DEFAULT ''")
+        if "totp_counter" not in user_cols:
+            db.execute("ALTER TABLE users ADD COLUMN totp_counter INTEGER NOT NULL DEFAULT 0")
+
     # Fold any legacy free-text `category` values into real category rows.
     if "category" in cols:
         from .utils import unique_category_slug

@@ -7,6 +7,23 @@
   <h1 class="page-title">{{ cat.name }}</h1>
   {% if cat.description %}<p class="page-sub">{{ cat.description }}</p>{% endif %}
   {% if photos %}<p class="muted-text proof-hint">Tap ♥ on the photos you like — your picks are saved for the photographer.</p>{% endif %}
+  {% if videos %}
+  <div class="video-list">
+    {% for v in videos %}
+    <div class="video-card">
+      <span class="video-icon" aria-hidden="true">▶</span>
+      <span class="video-name">{{ v.title or v.orig_name }}</span>
+      <span class="video-size muted-text">{{ v.size | filesizeformat }}</span>
+      {% if v.preview_status == 'ready' %}
+      <button type="button" class="btn btn-sm watch-btn"
+              data-src="{{ url_for('public.private_watch', token=cat.share_token, video_id=v.id) }}">Watch</button>
+      {% endif %}
+      <a class="btn btn-sm" href="{{ url_for('public.private_video', token=cat.share_token, video_id=v.id) }}">Download</a>
+    </div>
+    {% endfor %}
+    <video id="videoPlayer" controls preload="none" playsinline hidden></video>
+  </div>
+  {% endif %}
   {% if cat.allow_download and photos %}
   <p class="album-download">
     <a class="btn btn-primary" href="{{ url_for('public.private_download', token=cat.share_token) }}" rel="nofollow">

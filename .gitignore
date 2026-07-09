@@ -23,6 +23,10 @@ chitralahar/static/uploads/wm/
 chitralahar/static/uploads/originals/*
 !chitralahar/static/uploads/originals/.gitkeep
 
+# Client videos (local data, not source)
+chitralahar/static/uploads/videos/*
+!chitralahar/static/uploads/videos/.gitkeep
+
 # Watermark fonts: drop your own .ttf/.otf here. OS fonts are not redistributable,
 # so the font files themselves are not committed (keep the folder + docs).
 chitralahar/static/fonts/*

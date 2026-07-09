@@ -437,8 +437,50 @@ def private_gallery(token):
 
     picked = {r["photo_id"] for r in db.execute(
         "SELECT photo_id FROM proof_selections WHERE token = ?", (token,)).fetchall()}
+    field = "subcategory_id" if is_sub else "category_id"
+    videos = db.execute(f"SELECT * FROM videos WHERE {field} = ? ORDER BY id",
+                        (album["id"],)).fetchall()
     return render_template("public/private.html", cat=album,
-                           photos=_album_photos(db, album, is_sub), picked=picked)
+                           photos=_album_photos(db, album, is_sub), picked=picked,
+                           videos=videos)
+
+
+@bp.route("/private/<token>/video/<int:video_id>")
+def private_video(token, video_id):
+    """Download a video from an unlocked private album (never streamed publicly)."""
+    db = get_db()
+    album, is_sub = _resolve_private_album(db, token)
+    if album is None or not _album_unlocked(album, token):
+        abort(404)
+    field = "subcategory_id" if is_sub else "category_id"
+    v = db.execute(f"SELECT * FROM videos WHERE id = ? AND {field} = ?",
+                   (video_id, album["id"])).fetchone()
+    if v is None:
+        abort(404)
+    path = Path(current_app.config["UPLOAD_FOLDER"]) / "videos" / v["filename"]
+    if not path.exists():
+        abort(404)
+    # conditional=True → HTTP ranges, so big downloads can pause/resume
+    return send_file(path, as_attachment=True, conditional=True,
+                     download_name=v["orig_name"] or v["filename"])
+
+
+@bp.route("/private/<token>/watch/<int:video_id>")
+def private_watch(token, video_id):
+    """Stream the 720p PREVIEW (never the original — home-upload friendly)."""
+    db = get_db()
+    album, is_sub = _resolve_private_album(db, token)
+    if album is None or not _album_unlocked(album, token):
+        abort(404)
+    field = "subcategory_id" if is_sub else "category_id"
+    v = db.execute(f"SELECT * FROM videos WHERE id = ? AND {field} = ?",
+                   (video_id, album["id"])).fetchone()
+    if v is None or v["preview_status"] != "ready" or not v["preview_filename"]:
+        abort(404)
+    path = Path(current_app.config["UPLOAD_FOLDER"]) / "videos" / v["preview_filename"]
+    if not path.exists():
+        abort(404)
+    return send_file(path, mimetype="video/mp4", conditional=True)
 
 
 @bp.route("/private/<token>/proof/<int:photo_id>", methods=["POST"])

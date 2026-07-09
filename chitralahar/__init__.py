@@ -46,7 +46,7 @@ def create_app(config_object=Config):
     instance_dir = Path(app.config["DATABASE"]).parent
     instance_dir.mkdir(parents=True, exist_ok=True)
     upload_root = Path(app.config["UPLOAD_FOLDER"])
-    for sub in ("photos", "thumbs", "misc", "wm", "originals"):
+    for sub in ("photos", "thumbs", "misc", "wm", "originals", "videos"):
         (upload_root / sub).mkdir(parents=True, exist_ok=True)
 
     app.config["SECRET_KEY"] = _get_or_create_secret_key(instance_dir)

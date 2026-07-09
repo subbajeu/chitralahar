@@ -1,0 +1,14 @@
+{% extends "admin/auth.html" %}
+{% block title %}Two-factor code{% endblock %}
+{% block content %}
+<h1 class="auth-title">Two-factor code</h1>
+<p class="muted">Enter the 6-digit code from your authenticator app.</p>
+<form method="post" class="auth-form" novalidate>
+  <label>Code
+    <input type="text" name="code" inputmode="numeric" pattern="[0-9]*" maxlength="7"
+           autocomplete="one-time-code" required autofocus>
+  </label>
+  <button type="submit" class="btn btn-primary btn-block">Verify</button>
+</form>
+<p class="auth-back"><a href="{{ url_for('auth.login') }}">&lsaquo; Back to sign in</a></p>
+{% endblock %}
