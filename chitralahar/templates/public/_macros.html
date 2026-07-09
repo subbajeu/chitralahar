@@ -1,0 +1,23 @@
+{# Mosaic gallery tile — sizes itself from the photo's aspect ratio. #}
+{% macro tile(p, idx, href, thumb_url, full_url, proof_url=None, picked=False) %}
+{% set ar = (p.width / p.height) if (p.width and p.height) else 1.4 %}
+{% if idx % 7 == 0 and ar >= 1.2 %}{% set t = 'is-big' %}
+{% elif ar <= 0.8 %}{% set t = 'is-tall' %}
+{% elif ar >= 1.4 %}{% set t = 'is-wide' %}
+{% else %}{% set t = '' %}{% endif %}
+<figure class="g-item {{ t }}">
+  {% if proof_url %}
+  <button type="button" class="proof-btn {{ 'picked' if picked }}" data-proof-url="{{ proof_url }}"
+          aria-label="Mark as favourite" title="Mark as favourite">♥</button>
+  {% endif %}
+  <a href="{{ href }}" class="g-link" data-full="{{ full_url }}"
+     data-cap="{{ (p.title ~ ('  ·  ' ~ p.caption if p.caption else '')) if p.title else p.caption }}">
+    <img src="{{ thumb_url }}"
+         srcset="{{ thumb_url }} 800w, {{ full_url }} 2200w"
+         sizes="(max-width: 460px) 100vw, (max-width: 1024px) 50vw, 25vw"
+         alt="{{ p.title or 'Photograph' }}"
+         width="{{ p.width or 800 }}" height="{{ p.height or 600 }}" loading="lazy">
+    {% if p.title %}<figcaption class="g-cap">{{ p.title }}</figcaption>{% endif %}
+  </a>
+</figure>
+{% endmacro %}

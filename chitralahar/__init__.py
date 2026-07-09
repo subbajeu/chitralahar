@@ -85,7 +85,7 @@ def create_app(config_object=Config):
     def inject_globals():
         user = current_user()
         unread = 0
-        if user:
+        if user and request.path.startswith("/admin"):  # only admin pages show the badge
             from .db import get_db
             unread = get_db().execute(
                 "SELECT COUNT(*) c FROM messages WHERE read = 0").fetchone()["c"]

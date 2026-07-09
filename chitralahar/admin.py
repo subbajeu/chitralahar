@@ -1,14 +1,24 @@
 """Admin panel: photos, categories, blog posts, the about page, and settings."""
 import io
+import json
 import os
 import secrets
+import shutil
+import sqlite3
+import subprocess
+import tempfile
+import threading
+import uuid
+import zipfile
 from pathlib import Path
 
 from flask import (
     Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request,
-    send_file, url_for,
+    send_file, session, url_for,
 )
-from werkzeug.security import generate_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from . import totp
 
 from .auth import login_required
 from .db import (
@@ -178,13 +188,11 @@ def photos():
         active_album = db.execute("SELECT * FROM subcategories WHERE id = ?", (sub,)).fetchone()
     elif cat is not None:
         active_album = db.execute("SELECT * FROM categories WHERE id = ?", (cat,)).fetchone()
-    # Client proofing picks for that album's share link.
     proofed = set()
     if active_album and active_album["private"] and active_album["share_token"]:
         proofed = {r["photo_id"] for r in db.execute(
             "SELECT photo_id FROM proof_selections WHERE token = ?",
             (active_album["share_token"],)).fetchall()}
-    # Videos attached to the selected album (download-only, delivered via share link).
     album_videos = []
     if active_album:
         field = "subcategory_id" if sub is not None else "category_id"
@@ -1207,15 +1215,13 @@ def settings():
         clear_watermark_cache()  # regenerate with the new settings on next view
         flash("Settings saved.", "success")
         return redirect(url_for("admin.settings"))
-    from flask import session
-    from .totp import otpauth_uri
     user = get_db().execute("SELECT * FROM users WHERE id = ?", (session["user_id"],)).fetchone()
     pending = session.get("totp_pending")
     return render_template(
         "admin/settings.html", values=get_settings(), fonts=available_fonts(),
         twofa_on=bool(user["totp_secret"]),
         totp_pending=pending,
-        totp_uri=otpauth_uri(pending, user["username"]) if pending else None,
+        totp_uri=totp.otpauth_uri(pending, user["username"]) if pending else None,
     )
 
 
@@ -1276,16 +1282,12 @@ def watermark_preview():
 # --------------------------- Videos (download + streamable preview) ---------------------------
 
 def ffmpeg_available():
-    import shutil
     return shutil.which("ffmpeg") is not None
 
 
 def _start_preview(db_path, video_id, src, out):
     """Transcode a 720p ~2.5Mbps faststart MP4 preview in a background thread.
     The thread opens its own DB connection (request connection dies with the request)."""
-    import sqlite3
-    import subprocess
-    import threading
 
     def work():
         cmd = ["ffmpeg", "-y", "-i", str(src),
@@ -1325,7 +1327,6 @@ def _queue_preview(db, v):
 @bp.route("/videos/upload", methods=["POST"])
 @login_required
 def videos_upload():
-    import uuid
     db = get_db()
     cat_id, sub_id = resolve_taxonomy(
         db, request.form.get("category_id"), request.form.get("subcategory_id")
@@ -1439,8 +1440,6 @@ def message_delete(msg_id):
 @bp.route("/account/password", methods=["POST"])
 @login_required
 def change_password():
-    from flask import session
-    from werkzeug.security import check_password_hash
     db = get_db()
     user = db.execute("SELECT * FROM users WHERE id = ?", (session["user_id"],)).fetchone()
     current = request.form.get("current_password") or ""
@@ -1463,19 +1462,15 @@ def change_password():
 @bp.route("/account/2fa/enable", methods=["POST"])
 @login_required
 def twofa_enable():
-    from flask import session
-    from .totp import new_secret
-    session["totp_pending"] = new_secret()
+    session["totp_pending"] = totp.new_secret()
     return redirect(url_for("admin.settings") + "#twofa")
 
 
 @bp.route("/account/2fa/confirm", methods=["POST"])
 @login_required
 def twofa_confirm():
-    from flask import session
-    from .totp import verify
     secret = session.get("totp_pending")
-    counter = verify(secret or "", request.form.get("code"))
+    counter = totp.verify(secret or "", request.form.get("code"))
     if not counter:
         flash("That code didn't match — scan/enter the secret again and retry.", "error")
         return redirect(url_for("admin.settings") + "#twofa")
@@ -1491,8 +1486,6 @@ def twofa_confirm():
 @bp.route("/account/2fa/disable", methods=["POST"])
 @login_required
 def twofa_disable():
-    from flask import session
-    from werkzeug.security import check_password_hash
     db = get_db()
     user = db.execute("SELECT * FROM users WHERE id = ?", (session["user_id"],)).fetchone()
     if not check_password_hash(user["password_hash"], request.form.get("password") or ""):
@@ -1510,9 +1503,6 @@ def twofa_disable():
 @login_required
 def backup():
     """One-click site backup: a consistent DB snapshot + every uploaded file."""
-    import sqlite3
-    import tempfile
-    import zipfile
 
     tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
     try:
@@ -1549,7 +1539,6 @@ def backup():
 @login_required
 def backfill_exif():
     """Extract EXIF from kept originals for photos that predate EXIF capture."""
-    import json as _json
     from PIL import Image
     from .images import extract_exif
 
@@ -1565,7 +1554,7 @@ def backfill_exif():
         except Exception:  # noqa: BLE001
             continue
         if info:
-            db.execute("UPDATE photos SET exif = ? WHERE id = ?", (_json.dumps(info), p["id"]))
+            db.execute("UPDATE photos SET exif = ? WHERE id = ?", (json.dumps(info), p["id"]))
             n += 1
     db.commit()
     flash(f"EXIF extracted for {n} photo{'s' if n != 1 else ''}.", "success")

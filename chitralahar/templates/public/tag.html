@@ -10,26 +10,11 @@
 {% if photos %}
 <div class="wrap">
   <div class="gallery" id="gallery">
+    {% from "public/_macros.html" import tile %}
     {% for p in photos %}
-    {% set ar = (p.width / p.height) if (p.width and p.height) else 1.4 %}
-    {% if loop.index0 % 7 == 0 and ar >= 1.2 %}{% set tile = 'is-big' %}
-    {% elif ar <= 0.8 %}{% set tile = 'is-tall' %}
-    {% elif ar >= 1.4 %}{% set tile = 'is-wide' %}
-    {% else %}{% set tile = '' %}{% endif %}
-    <figure class="g-item {{ tile }}">
-      <a href="{{ url_for('public.photo', photo_id=p.id) }}" class="g-link"
-         data-full="{{ url_for('public.image', photo_id=p.id, kind='full') if site.watermark_enabled else url_for('static', filename='uploads/photos/' ~ p.filename) }}"
-         data-cap="{{ (p.title ~ ('  ·  ' ~ p.caption if p.caption else '')) if p.title else p.caption }}">
-        {% set thumb_url = url_for('public.image', photo_id=p.id, kind='thumb') if site.watermark_enabled else url_for('static', filename='uploads/thumbs/' ~ p.thumb_filename) %}
-        {% set full_url = url_for('public.image', photo_id=p.id, kind='full') if site.watermark_enabled else url_for('static', filename='uploads/photos/' ~ p.filename) %}
-        <img src="{{ thumb_url }}"
-             srcset="{{ thumb_url }} 800w, {{ full_url }} 2200w"
-             sizes="(max-width: 460px) 100vw, (max-width: 1024px) 50vw, 25vw"
-             alt="{{ p.title or 'Photograph' }}"
-             width="{{ p.width or 800 }}" height="{{ p.height or 600 }}" loading="lazy">
-        {% if p.title %}<figcaption class="g-cap">{{ p.title }}</figcaption>{% endif %}
-      </a>
-    </figure>
+    {{ tile(p, loop.index0, url_for('public.photo', photo_id=p.id),
+            url_for('public.image', photo_id=p.id, kind='thumb') if site.watermark_enabled else url_for('static', filename='uploads/thumbs/' ~ p.thumb_filename),
+            url_for('public.image', photo_id=p.id, kind='full') if site.watermark_enabled else url_for('static', filename='uploads/photos/' ~ p.filename)) }}
     {% endfor %}
     <i class="g-fill" aria-hidden="true"></i>
   </div>

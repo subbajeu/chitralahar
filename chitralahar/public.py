@@ -1,6 +1,5 @@
 """Public-facing portfolio, blog, and about pages."""
 import hashlib
-import io
 import json
 import os
 import tempfile
@@ -395,6 +394,36 @@ def _album_unlocked(album, token):
     return session.get("unlocked_" + token) == _unlock_fingerprint(album["passkey"])
 
 
+def _album_field(is_sub):
+    return "subcategory_id" if is_sub else "category_id"
+
+
+def _unlocked_album_or_404(db, token):
+    album, is_sub = _resolve_private_album(db, token)
+    if album is None or not _album_unlocked(album, token):
+        abort(404)
+    return album, is_sub
+
+
+def _video_download(v):
+    path = Path(current_app.config["UPLOAD_FOLDER"]) / "videos" / v["filename"]
+    if not path.exists():
+        abort(404)
+    # conditional=True → HTTP ranges, so big downloads can pause/resume
+    return send_file(path, as_attachment=True, conditional=True,
+                     download_name=v["orig_name"] or v["filename"])
+
+
+def _video_stream(v):
+    """Stream the 720p preview — never the original (home-upload friendly)."""
+    if v["preview_status"] != "ready" or not v["preview_filename"]:
+        abort(404)
+    path = Path(current_app.config["UPLOAD_FOLDER"]) / "videos" / v["preview_filename"]
+    if not path.exists():
+        abort(404)
+    return send_file(path, mimetype="video/mp4", conditional=True)
+
+
 def _album_photos(db, album, is_sub):
     if is_sub:
         return db.execute(
@@ -437,61 +466,38 @@ def private_gallery(token):
 
     picked = {r["photo_id"] for r in db.execute(
         "SELECT photo_id FROM proof_selections WHERE token = ?", (token,)).fetchall()}
-    field = "subcategory_id" if is_sub else "category_id"
-    videos = db.execute(f"SELECT * FROM videos WHERE {field} = ? ORDER BY id",
+    videos = db.execute(f"SELECT * FROM videos WHERE {_album_field(is_sub)} = ? ORDER BY id",
                         (album["id"],)).fetchall()
     return render_template("public/private.html", cat=album,
                            photos=_album_photos(db, album, is_sub), picked=picked,
                            videos=videos)
 
 
-@bp.route("/private/<token>/video/<int:video_id>")
-def private_video(token, video_id):
-    """Download a video from an unlocked private album (never streamed publicly)."""
-    db = get_db()
-    album, is_sub = _resolve_private_album(db, token)
-    if album is None or not _album_unlocked(album, token):
-        abort(404)
-    field = "subcategory_id" if is_sub else "category_id"
-    v = db.execute(f"SELECT * FROM videos WHERE id = ? AND {field} = ?",
+def _album_video_or_404(db, token, video_id):
+    album, is_sub = _unlocked_album_or_404(db, token)
+    v = db.execute(f"SELECT * FROM videos WHERE id = ? AND {_album_field(is_sub)} = ?",
                    (video_id, album["id"])).fetchone()
     if v is None:
         abort(404)
-    path = Path(current_app.config["UPLOAD_FOLDER"]) / "videos" / v["filename"]
-    if not path.exists():
-        abort(404)
-    # conditional=True → HTTP ranges, so big downloads can pause/resume
-    return send_file(path, as_attachment=True, conditional=True,
-                     download_name=v["orig_name"] or v["filename"])
+    return v
+
+
+@bp.route("/private/<token>/video/<int:video_id>")
+def private_video(token, video_id):
+    return _video_download(_album_video_or_404(get_db(), token, video_id))
 
 
 @bp.route("/private/<token>/watch/<int:video_id>")
 def private_watch(token, video_id):
-    """Stream the 720p PREVIEW (never the original — home-upload friendly)."""
-    db = get_db()
-    album, is_sub = _resolve_private_album(db, token)
-    if album is None or not _album_unlocked(album, token):
-        abort(404)
-    field = "subcategory_id" if is_sub else "category_id"
-    v = db.execute(f"SELECT * FROM videos WHERE id = ? AND {field} = ?",
-                   (video_id, album["id"])).fetchone()
-    if v is None or v["preview_status"] != "ready" or not v["preview_filename"]:
-        abort(404)
-    path = Path(current_app.config["UPLOAD_FOLDER"]) / "videos" / v["preview_filename"]
-    if not path.exists():
-        abort(404)
-    return send_file(path, mimetype="video/mp4", conditional=True)
+    return _video_stream(_album_video_or_404(get_db(), token, video_id))
 
 
 @bp.route("/private/<token>/proof/<int:photo_id>", methods=["POST"])
 def private_proof(token, photo_id):
     """Client proofing: toggle a favourite on a photo in an unlocked private album."""
     db = get_db()
-    album, is_sub = _resolve_private_album(db, token)
-    if album is None or not _album_unlocked(album, token):
-        abort(404)
-    field = "subcategory_id" if is_sub else "category_id"
-    p = db.execute(f"SELECT 1 FROM photos WHERE id = ? AND {field} = ? AND published = 1",
+    album, is_sub = _unlocked_album_or_404(db, token)
+    p = db.execute(f"SELECT 1 FROM photos WHERE id = ? AND {_album_field(is_sub)} = ? AND published = 1",
                    (photo_id, album["id"])).fetchone()
     if p is None:
         abort(404)
@@ -512,9 +518,7 @@ def private_image(token, photo_id, kind):
     if kind not in ("full", "thumb"):
         abort(404)
     db = get_db()
-    album, is_sub = _resolve_private_album(db, token)
-    if album is None or not _album_unlocked(album, token):
-        abort(404)
+    album, is_sub = _unlocked_album_or_404(db, token)
     if is_sub:
         p = db.execute(
             "SELECT * FROM photos WHERE id = ? AND subcategory_id = ? AND published = 1",
@@ -606,23 +610,12 @@ def shared_video(token):
 
 @bp.route("/v/<token>/download")
 def shared_video_download(token):
-    v = _shared_video(get_db(), token)
-    path = Path(current_app.config["UPLOAD_FOLDER"]) / "videos" / v["filename"]
-    if not path.exists():
-        abort(404)
-    return send_file(path, as_attachment=True, conditional=True,
-                     download_name=v["orig_name"] or v["filename"])
+    return _video_download(_shared_video(get_db(), token))
 
 
 @bp.route("/v/<token>/watch")
 def shared_video_watch(token):
-    v = _shared_video(get_db(), token)
-    if v["preview_status"] != "ready" or not v["preview_filename"]:
-        abort(404)
-    path = Path(current_app.config["UPLOAD_FOLDER"]) / "videos" / v["preview_filename"]
-    if not path.exists():
-        abort(404)
-    return send_file(path, mimetype="video/mp4", conditional=True)
+    return _video_stream(_shared_video(get_db(), token))
 
 
 # --------------------------- SEO & feeds ---------------------------
@@ -630,7 +623,7 @@ def shared_video_watch(token):
 @bp.route("/robots.txt")
 def robots():
     return Response(
-        "User-agent: *\nDisallow: /admin\nDisallow: /private/\n"
+        "User-agent: *\nDisallow: /admin\nDisallow: /private/\nDisallow: /v/\n"
         "Sitemap: %s\n" % url_for("public.sitemap", _external=True),
         mimetype="text/plain",
     )
