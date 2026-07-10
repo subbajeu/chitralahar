@@ -177,6 +177,24 @@
   }
 })();
 
+/* Viewer color scheme: light → grey → black, saved in localStorage. */
+(function () {
+  "use strict";
+  var btn = document.getElementById("schemeBtn");
+  if (!btn) return;
+  var ORDER = ["", "grey", "black"];
+  btn.addEventListener("click", function () {
+    var cur = document.documentElement.getAttribute("data-scheme") || "";
+    var next = ORDER[(ORDER.indexOf(cur) + 1) % ORDER.length];
+    if (next) document.documentElement.setAttribute("data-scheme", next);
+    else document.documentElement.removeAttribute("data-scheme");
+    try {
+      if (next) localStorage.setItem("scheme", next);
+      else localStorage.removeItem("scheme");
+    } catch (e) {}
+  });
+})();
+
 /* Private-album video preview player. */
 (function () {
   "use strict";

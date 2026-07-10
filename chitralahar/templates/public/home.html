@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{% if active_cat %}{{ active_cat.name }} — {% endif %}{{ site.site_title }} — {{ site.tagline }}{% endblock %}
+{% block body_class %}{{ 'slider-home' if slides }}{% endblock %}
 
 {% block content %}
 {% if not active_cat and not active_sub %}
@@ -32,6 +33,8 @@
   {% endif %}
 {% endif %}
 
+{# Slider template: the full-screen slideshow IS the home page. #}
+{% if not slides %}
 <section class="page-intro wrap">
   <h1 class="page-title">{% if active_cat %}{{ active_cat.name }}{% else %}{{ site.home_heading or "Selected Work" }}{% endif %}</h1>
   {% if active_sub %}<p class="page-sub">{{ active_sub.name }}</p>
@@ -79,5 +82,6 @@
     <p>Check back soon.</p>
   {% endif %}
 </div>
+{% endif %}
 {% endif %}
 {% endblock %}

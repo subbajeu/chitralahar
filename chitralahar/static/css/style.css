@@ -579,3 +579,58 @@ body[data-template="editorial"] .page-title { font-size: clamp(2.4rem, 6vw, 4.2r
 .lock-title { font-size: clamp(1.8rem, 4vw, 2.4rem); font-weight: 400; margin: 0 0 12px; }
 .muted-text { color: var(--ink-3); margin: 0 0 22px; }
 .lock-form { display: flex; flex-direction: column; gap: 12px; max-width: 280px; margin: 0 auto; }
+
+/* ===========================================================
+   Viewer color schemes — cycled by the header dot, saved in
+   localStorage. Kept LAST so they override template rules.
+   =========================================================== */
+.scheme-btn {
+  width: 22px; height: 22px; margin-left: auto; margin-right: 16px;
+  border-radius: 50%; border: 1px solid var(--line-2); cursor: pointer; flex-shrink: 0;
+  background: linear-gradient(135deg, #fff 50%, #232323 50%);
+  transition: transform .15s var(--ease);
+}
+.scheme-btn:hover { transform: scale(1.15); }
+html[data-scheme="grey"] .scheme-btn { background: #2b2b2b; }
+html[data-scheme="black"] .scheme-btn { background: #000; border-color: #555; }
+
+html[data-scheme="grey"] body {
+  --bg: #232323; --bg-soft: #2b2b2b; --bg-sink: #353535;
+  --ink: #ececec; --ink-2: #b4b4b4; --ink-3: #878787;
+  --line: #3a3a3a; --line-2: #484848; --accent: #ececec;
+}
+html[data-scheme="grey"] .site-header { background: rgba(35, 35, 35, .85); }
+html[data-scheme="grey"] .lightbox { background: rgba(28, 28, 28, .97); }
+html[data-scheme="grey"] .lb-btn { background: rgba(60, 60, 60, .72); }
+html[data-scheme="grey"] ::selection { background: #ececec; color: #232323; }
+
+html[data-scheme="black"] body {
+  --bg: #000000; --bg-soft: #101010; --bg-sink: #1a1a1a;
+  --ink: #f2f2f2; --ink-2: #ababab; --ink-3: #7c7c7c;
+  --line: #242424; --line-2: #303030; --accent: #f2f2f2;
+}
+html[data-scheme="black"] .site-header { background: rgba(0, 0, 0, .8); }
+html[data-scheme="black"] .lightbox { background: rgba(0, 0, 0, .97); }
+html[data-scheme="black"] .lb-btn { background: rgba(34, 34, 34, .8); }
+html[data-scheme="black"] ::selection { background: #f2f2f2; color: #000; }
+
+/* light-on-white bits that both dark schemes need re-based */
+html[data-scheme="grey"] .btn, html[data-scheme="black"] .btn,
+html[data-scheme="grey"] .btn-danger, html[data-scheme="black"] .btn-danger,
+html[data-scheme="grey"] .video-card, html[data-scheme="black"] .video-card {
+  background: var(--bg-soft);
+}
+html[data-scheme="grey"] .contact-form input, html[data-scheme="grey"] .contact-form textarea,
+html[data-scheme="black"] .contact-form input, html[data-scheme="black"] .contact-form textarea {
+  background: var(--bg-soft); color: var(--ink); border-color: var(--line-2);
+}
+
+/* Slider template home: the slideshow IS the page — full viewport under the
+   header, images letterboxed (object-fit: contain) so nothing is cropped. */
+body.slider-home .site-main { padding-bottom: 0; }
+body.slider-home .home-slider {
+  height: calc(100vh - var(--header-h));
+  height: calc(100dvh - var(--header-h)); /* mobile browsers with dynamic UI chrome */
+  margin-bottom: 0; background: var(--bg);
+}
+body.slider-home .slide img { object-fit: contain; }
