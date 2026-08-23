@@ -7,6 +7,7 @@ python-slugify>=8.0
 # Production WSGI server (used by deploy/chitralahar.service + the Apache
 # reverse-proxy setup). Not needed for local `python run.py`.
 gunicorn>=21,<24
-# Optional: HEIC/HEIF support (iPhone photos). Uncomment if you want it and it
-# builds on your machine — the app runs fine without it (HEIC uploads are skipped).
-# pillow-heif>=0.16
+# HEIC/HEIF support (iPhone photos). Ships as a prebuilt wheel, so this needs
+# no toolchain. The import in images.py is guarded: an environment without it
+# skips HEIC uploads rather than failing to boot.
+pillow-heif>=0.16
