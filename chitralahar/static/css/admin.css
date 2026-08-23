@@ -78,6 +78,13 @@ body.admin { background: var(--bg-soft); }
 
 .reorder-hint { margin: 0 0 16px; }
 
+/* One-click orderings, shown only inside a single album. */
+.sort-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 10px 14px; margin: 0 0 12px;
+  background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+}
+
 /* ---------------- Photo grid (manage) ---------------- */
 .photo-grid { display: flex; flex-wrap: wrap; gap: 16px; }
 .photo-tile { flex: 1 1 175px; max-width: 300px; min-width: 0; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; transition: box-shadow .2s var(--ease), transform .2s var(--ease); }

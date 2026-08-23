@@ -91,6 +91,71 @@ def _apply_order(db, table, ids):
     db.commit()
 
 
+def _photo_scope(args):
+    """Translate the photos view's filter args into a WHERE clause.
+
+    Shared by the listing, the reorder endpoint and the sort endpoint so a
+    filtered reorder can never act on a different set than the one on screen.
+    """
+    cat = _int_or_none(args.get("cat"))
+    sub = _int_or_none(args.get("sub"))
+    uncat = args.get("uncat") is not None
+    active = {"cat": None, "sub": None, "uncat": False}
+    if uncat:
+        active["uncat"] = True
+        return "WHERE p.category_id IS NULL", [], active
+    if sub is not None:
+        active["sub"] = sub
+        return "WHERE p.subcategory_id = ?", [sub], active
+    if cat is not None:
+        active["cat"] = cat
+        return "WHERE p.category_id = ?", [cat], active
+    return "", [], active
+
+
+def _densify_photo_order(db):
+    """Renumber every photo to a dense 0..N-1 in its current display order.
+
+    sort_order is global, and duplicates in it make a subset reorder ambiguous
+    (the ORDER BY falls through to created_at/id, which the drag can't express).
+    Densifying changes nothing visible — it just guarantees unique slots.
+    """
+    rows = db.execute(
+        "SELECT id FROM photos ORDER BY sort_order, created_at DESC, id DESC"
+    ).fetchall()
+    for i, r in enumerate(rows):
+        db.execute("UPDATE photos SET sort_order = ? WHERE id = ?", (i, r["id"]))
+
+
+def _apply_photo_order_subset(db, ids):
+    """Reorder `ids` among themselves without disturbing any other photo.
+
+    sort_order spans the whole table, so renumbering a filtered album 0..N would
+    collide with every other album. Instead we reuse the exact slots these
+    photos already occupy and hand them out in the requested sequence: the album
+    reorders internally while its position in the global order is untouched.
+    """
+    wanted = []
+    for raw in ids:
+        try:
+            wanted.append(int(raw))
+        except (TypeError, ValueError):
+            continue
+    if not wanted:
+        return
+    _densify_photo_order(db)
+    placeholders = ",".join("?" * len(wanted))
+    rows = db.execute(
+        f"SELECT id, sort_order FROM photos WHERE id IN ({placeholders})", wanted
+    ).fetchall()
+    present = {r["id"] for r in rows}
+    slots = sorted(r["sort_order"] for r in rows)
+    # Drop ids that vanished (deleted in another tab) but keep the caller's order.
+    for pid, slot in zip([i for i in wanted if i in present], slots):
+        db.execute("UPDATE photos SET sort_order = ? WHERE id = ?", (slot, pid))
+    db.commit()
+
+
 @bp.route("/")
 @login_required
 def dashboard():
@@ -147,20 +212,8 @@ def inline_upload():
 @login_required
 def photos():
     db = get_db()
-    cat = _int_or_none(request.args.get("cat"))
-    sub = _int_or_none(request.args.get("sub"))
-    uncat = request.args.get("uncat") is not None
-    where, params = "", []
-    active = {"cat": None, "sub": None, "uncat": False}
-    if uncat:
-        where = "WHERE p.category_id IS NULL"
-        active["uncat"] = True
-    elif sub is not None:
-        where, active["sub"] = "WHERE p.subcategory_id = ?", sub
-        params.append(sub)
-    elif cat is not None:
-        where, active["cat"] = "WHERE p.category_id = ?", cat
-        params.append(cat)
+    where, params, active = _photo_scope(request.args)
+    cat, sub = active["cat"], active["sub"]
     items = db.execute(
         f"""SELECT p.*, c.name AS category_name, c.published AS category_published,
                    s.name AS subcategory_name, s.published AS subcategory_published
@@ -395,8 +448,54 @@ def photo_delete(photo_id):
 @login_required
 def photos_reorder():
     data = request.get_json(silent=True) or {}
-    _apply_order(get_db(), "photos", data.get("order", []))
+    # Slot-preserving, so this is safe inside a filtered album view too.
+    _apply_photo_order_subset(get_db(), data.get("order", []))
     return jsonify({"ok": True})
+
+
+# One-click orderings for the photos currently on screen. Values are trusted
+# literals interpolated into ORDER BY — never user input.
+_PHOTO_SORTS = {
+    "newest": "p.created_at DESC, p.id DESC",
+    "oldest": "p.created_at ASC, p.id ASC",
+    "name_asc": "COALESCE(NULLIF(p.title, ''), p.orig_name) COLLATE NOCASE ASC, p.id ASC",
+    "name_desc": "COALESCE(NULLIF(p.title, ''), p.orig_name) COLLATE NOCASE DESC, p.id DESC",
+}
+_SORT_LABELS = {
+    "newest": "newest first", "oldest": "oldest first",
+    "name_asc": "name A–Z", "name_desc": "name Z–A", "reverse": "reversed",
+}
+
+
+@bp.route("/photos/sort", methods=["POST"])
+@login_required
+def photos_sort():
+    """Bulk-order the photos in the current view. Dragging 60 tiles by hand is
+    not a reasonable ask, so this covers the common orderings in one click."""
+    db = get_db()
+    key = (request.form.get("key") or "").strip()
+    where, params, active = _photo_scope(request.args)
+    back = url_for("admin.photos", cat=active["cat"], sub=active["sub"],
+                   uncat=1 if active["uncat"] else None)
+
+    if key == "reverse":
+        rows = db.execute(
+            f"SELECT p.id FROM photos p {where} "
+            "ORDER BY p.sort_order, p.created_at DESC, p.id DESC", params
+        ).fetchall()
+        ids = [r["id"] for r in reversed(rows)]
+    elif key in _PHOTO_SORTS:
+        rows = db.execute(
+            f"SELECT p.id FROM photos p {where} ORDER BY {_PHOTO_SORTS[key]}", params
+        ).fetchall()
+        ids = [r["id"] for r in rows]
+    else:
+        flash("Unknown sort option.", "error")
+        return redirect(back)
+
+    _apply_photo_order_subset(db, ids)
+    flash(f"Sorted {len(ids)} photo{'s' if len(ids) != 1 else ''} by {_SORT_LABELS[key]}.", "success")
+    return redirect(back)
 
 
 # --------------------------- Categories & subcategories ---------------------------

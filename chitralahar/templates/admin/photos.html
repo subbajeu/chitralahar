@@ -144,8 +144,19 @@
     {% endif %}
 
     {% if photos %}
+    {% if filtered %}
+    <form class="sort-bar" method="post"
+          action="{{ url_for('admin.photos_sort', cat=active.cat, sub=active.sub, uncat=1 if active.uncat else None) }}">
+      <span class="muted small">Sort these {{ photos|length }}:</span>
+      <button type="submit" name="key" value="newest" class="btn btn-sm">Newest</button>
+      <button type="submit" name="key" value="oldest" class="btn btn-sm">Oldest</button>
+      <button type="submit" name="key" value="name_asc" class="btn btn-sm">Name A–Z</button>
+      <button type="submit" name="key" value="name_desc" class="btn btn-sm">Name Z–A</button>
+      <button type="submit" name="key" value="reverse" class="btn btn-sm">Reverse</button>
+    </form>
+    {% endif %}
     <p class="reorder-hint muted small">Click photos to select · drag onto a category in the tree to file · drag to reorder · ★ feature · eye shows/hides.</p>
-    <div class="photo-grid" id="photoGrid" data-reorder-url="{{ url_for('admin.photos_reorder') }}" data-drag-item=".photo-tile" data-drag-kind="photo" data-reorder-lock="{{ '1' if filtered else '0' }}">
+    <div class="photo-grid" id="photoGrid" data-reorder-url="{{ url_for('admin.photos_reorder') }}" data-drag-item=".photo-tile" data-drag-kind="photo" data-reorder-lock="0">
       {% for p in photos %}
       <div class="photo-tile {{ 'is-hidden' if not p.published }}" draggable="true" data-id="{{ p.id }}">
         <div class="photo-tile-img">
