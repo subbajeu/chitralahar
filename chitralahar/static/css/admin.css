@@ -84,6 +84,17 @@ body.admin { background: var(--bg-soft); }
 .dropzone-status { margin-top: 14px; font-size: .9rem; color: var(--ink-2); }
 .dropzone.is-uploading { pointer-events: none; opacity: .85; }
 
+/* Hidden carrier: once an album has photos the form only hosts the file
+   input and hidden destination fields; nothing renders. */
+.dropzone.is-hidden-dz { display: none; }
+/* ...except while uploading: the progress bar lives in this form, and a grid
+   drop with no feedback looks like nothing happened. */
+.dropzone.is-hidden-dz.is-uploading {
+  display: block; border-style: solid; border-color: var(--line);
+  padding: 12px 16px; text-align: left;
+}
+.dropzone.is-hidden-dz.is-uploading .dropzone-status { margin-top: 0; }
+
 /* Compact bar: shown instead of the full panel once an album has photos, so the
    grid below can be the drop target without two competing drop surfaces. */
 .dropzone.is-compact {

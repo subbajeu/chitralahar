@@ -3,14 +3,12 @@
 {% block page_title %}Photos{% endblock %}
 
 {% block content %}
-<form class="dropzone {{ 'is-compact' if photos }}" id="dropzone" method="post"
+<form class="dropzone {{ 'is-hidden-dz' if photos }}" id="dropzone" method="post"
       action="{{ url_for('admin.photos_upload') }}" enctype="multipart/form-data">
   <input type="file" name="photos" id="fileInput" accept="image/*" multiple hidden>
   {#
-    Uploads default to whichever album is open, so dropping files into a
-    category or subcategory view files them there without touching the
-    selects. They stay editable, for the case where you want to drop
-    somewhere other than where you are standing.
+    Destination bookkeeping for the hidden fields below: uploads always
+    file into the album being viewed.
   #}
   {%- set up_cat = active.cat if active.cat else (active_album.category_id if active.sub and active_album else None) -%}
   {%- set up_sub = active.sub -%}
@@ -24,24 +22,13 @@
   {%- else -%}
     {%- set up_target = None -%}
   {%- endif %}
-  <div class="dz-controls">
-    <span class="dz-controls-label muted small">
-      {{- 'Filing into (change if needed):' if up_target else 'Assign this batch (optional):' -}}
-    </span>
-    {% if categories %}
-    <select name="category_id" id="upCat">
-      <option value="">— Uncategorized —</option>
-      {% for c in categories %}
-      <option value="{{ c.id }}" {{ 'selected' if up_cat == c.id }}>{{ c.name }}{{ ' (hidden)' if not c.published }}</option>
-      {% endfor %}
-    </select>
-    <select name="subcategory_id" id="upSub" data-subselect="upCat" data-current="{{ up_sub or '' }}">
-      <option value="">— None —</option>
-    </select>
-    {% endif %}
-    <input type="text" name="tags" class="dz-tags" placeholder="Tags (comma-separated)">
-    {% if photos %}<button type="button" class="linklike" data-browse>browse…</button>{% endif %}
-  </div>
+  {#
+    No visible controls: uploads always file into the album being viewed.
+    The two hidden fields carry that destination; the grid is the drop
+    surface and the hint line holds the browse fallback.
+  #}
+  <input type="hidden" name="category_id" value="{{ up_cat or '' }}">
+  <input type="hidden" name="subcategory_id" value="{{ up_sub or '' }}">
   {% if not photos %}
   <div class="dropzone-inner">
     <p class="dropzone-title">Drop photos here</p>
@@ -179,7 +166,7 @@
       <button type="submit" name="key" value="reverse" class="btn btn-sm">Reverse</button>
     </form>
     {% endif %}
-    <p class="reorder-hint muted small">Click photos to select · drag onto a category in the tree to file · drag to reorder · ★ feature · eye shows/hides.</p>
+    <p class="reorder-hint muted small">Drop images anywhere below to add them{{ (' to ' ~ up_target) if up_target else '' }} · or <button type="button" class="linklike" data-browse>browse</button> · click to select · drag to reorder · ★ feature · eye shows/hides.</p>
     <div class="photo-grid" id="photoGrid" data-file-drop
          data-drop-label="{{ ('Drop to add to ' ~ up_target) if up_target else 'Drop to add photos' }}"
          data-reorder-url="{{ url_for('admin.photos_reorder') }}" data-drag-item=".photo-tile" data-drag-kind="photo" data-reorder-lock="0">
