@@ -19,7 +19,15 @@ body.admin { background: var(--bg-soft); }
 .admin-nav a {
   padding: 10px 12px; border-radius: var(--radius); font-size: .92rem; color: var(--ink-2);
   transition: background .15s var(--ease), color .15s var(--ease);
+  display: flex; align-items: center; gap: 10px;
 }
+/* sidebar icons */
+.admin-nav .nav-icon { flex: none; opacity: .55; transition: opacity .15s var(--ease); }
+.admin-nav a:hover .nav-icon,
+.admin-nav a.is-active .nav-icon { opacity: 1; }
+.admin-nav .nav-label { min-width: 0; }
+/* the unread count keeps its place at the far edge now the row is a flex line */
+.admin-nav .nav-badge { margin-left: auto; }
 .admin-nav a:hover { background: var(--bg-sink); color: var(--ink); }
 .admin-nav a.is-active { background: var(--ink); color: #fff; }
 .admin-side-foot { margin-top: auto; padding: 14px 12px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }

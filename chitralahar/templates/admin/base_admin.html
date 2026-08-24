@@ -1,3 +1,4 @@
+{% from "admin/_icons.html" import icon %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -25,17 +26,17 @@
       </a>
       <nav class="admin-nav">
         {% set ep = request.endpoint %}
-        <a href="{{ url_for('admin.dashboard') }}" class="{{ 'is-active' if ep == 'admin.dashboard' }}">Dashboard</a>
-        <a href="{{ url_for('admin.home_settings') }}" class="{{ 'is-active' if ep == 'admin.home_settings' }}">Home page</a>
-        <a href="{{ url_for('admin.photos') }}" class="{{ 'is-active' if ep in ['admin.photos', 'admin.photo_edit'] }}">Photos</a>
-        <a href="{{ url_for('admin.categories') }}" class="{{ 'is-active' if ep == 'admin.categories' }}">Categories</a>
-        <a href="{{ url_for('admin.posts') }}" class="{{ 'is-active' if ep in ['admin.posts', 'admin.post_new', 'admin.post_edit'] }}">Blog posts</a>
-        <a href="{{ url_for('admin.about_edit') }}" class="{{ 'is-active' if ep == 'admin.about_edit' }}">About page</a>
-        <a href="{{ url_for('admin.contact_edit') }}" class="{{ 'is-active' if ep == 'admin.contact_edit' }}">Contact page</a>
-        <a href="{{ url_for('admin.messages') }}" class="{{ 'is-active' if ep == 'admin.messages' }}">Messages{% if unread_messages %} <span class="nav-badge">{{ unread_messages }}</span>{% endif %}</a>
-        <a href="{{ url_for('admin.menu') }}" class="{{ 'is-active' if ep == 'admin.menu' }}">Menu</a>
-        <a href="{{ url_for('admin.templates') }}" class="{{ 'is-active' if ep == 'admin.templates' }}">Templates</a>
-        <a href="{{ url_for('admin.settings') }}" class="{{ 'is-active' if ep == 'admin.settings' }}">Settings</a>
+        <a href="{{ url_for('admin.dashboard') }}" class="{{ 'is-active' if ep == 'admin.dashboard' }}">{{ icon('dashboard') }}<span class="nav-label">Dashboard</span></a>
+        <a href="{{ url_for('admin.home_settings') }}" class="{{ 'is-active' if ep == 'admin.home_settings' }}">{{ icon('home') }}<span class="nav-label">Home page</span></a>
+        <a href="{{ url_for('admin.photos') }}" class="{{ 'is-active' if ep in ['admin.photos', 'admin.photo_edit'] }}">{{ icon('photos') }}<span class="nav-label">Photos</span></a>
+        <a href="{{ url_for('admin.categories') }}" class="{{ 'is-active' if ep == 'admin.categories' }}">{{ icon('categories') }}<span class="nav-label">Categories</span></a>
+        <a href="{{ url_for('admin.posts') }}" class="{{ 'is-active' if ep in ['admin.posts', 'admin.post_new', 'admin.post_edit'] }}">{{ icon('posts') }}<span class="nav-label">Blog posts</span></a>
+        <a href="{{ url_for('admin.about_edit') }}" class="{{ 'is-active' if ep == 'admin.about_edit' }}">{{ icon('about') }}<span class="nav-label">About page</span></a>
+        <a href="{{ url_for('admin.contact_edit') }}" class="{{ 'is-active' if ep == 'admin.contact_edit' }}">{{ icon('contact') }}<span class="nav-label">Contact page</span></a>
+        <a href="{{ url_for('admin.messages') }}" class="{{ 'is-active' if ep == 'admin.messages' }}">{{ icon('messages') }}<span class="nav-label">Messages</span>{% if unread_messages %} <span class="nav-badge">{{ unread_messages }}</span>{% endif %}</a>
+        <a href="{{ url_for('admin.menu') }}" class="{{ 'is-active' if ep == 'admin.menu' }}">{{ icon('menu') }}<span class="nav-label">Menu</span></a>
+        <a href="{{ url_for('admin.templates') }}" class="{{ 'is-active' if ep == 'admin.templates' }}">{{ icon('templates') }}<span class="nav-label">Templates</span></a>
+        <a href="{{ url_for('admin.settings') }}" class="{{ 'is-active' if ep == 'admin.settings' }}">{{ icon('settings') }}<span class="nav-label">Settings</span></a>
       </nav>
       <div class="admin-side-foot">
         <a href="{{ url_for('public.home') }}" target="_blank" rel="noopener">View site &nearr;</a>
