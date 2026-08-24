@@ -389,25 +389,51 @@
     dz.addEventListener("click", function (e) {
       if (e.target === input) return;
       if (e.target.closest(".dz-controls")) return;
+      if (dz.classList.contains("is-compact")) return;
       openPicker();
     });
     var controls = dz.querySelector(".dz-controls");
     if (controls) controls.addEventListener("click", function (e) { e.stopPropagation(); });
 
-    ["dragenter", "dragover"].forEach(function (ev) {
-      dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.add("is-drag"); });
-    });
-    ["dragleave", "dragend", "drop"].forEach(function (ev) {
-      dz.addEventListener(ev, function (e) {
-        if (ev === "dragleave" && dz.contains(e.relatedTarget)) return;
-        dz.classList.remove("is-drag");
+    // Distinguishes an OS file drag from an internal tile drag. Without this the
+    // grid would light up while you are merely reordering photos.
+    function hasFiles(e) {
+      var t = e.dataTransfer && e.dataTransfer.types;
+      return !!t && Array.prototype.indexOf.call(t, "Files") !== -1;
+    }
+
+    function acceptFiles(el, cls) {
+      ["dragenter", "dragover"].forEach(function (ev) {
+        el.addEventListener(ev, function (e) {
+          if (!hasFiles(e)) return;
+          e.preventDefault();
+          el.classList.add(cls);
+        });
       });
-    });
-    dz.addEventListener("drop", function (e) {
-      e.preventDefault();
-      if (!e.dataTransfer || !e.dataTransfer.files.length) return;
-      try { input.files = e.dataTransfer.files; } catch (_) {}
-      submitUpload(e.dataTransfer.files.length);
+      ["dragleave", "dragend", "drop"].forEach(function (ev) {
+        el.addEventListener(ev, function (e) {
+          if (ev === "dragleave" && el.contains(e.relatedTarget)) return;
+          el.classList.remove(cls);
+        });
+      });
+      el.addEventListener("drop", function (e) {
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (!e.dataTransfer.files.length) return;
+        try { input.files = e.dataTransfer.files; } catch (_) {}
+        submitUpload(e.dataTransfer.files.length);
+      });
+    }
+
+    acceptFiles(dz, "is-drag");
+    // The thumbnail grid is the real target once an album has contents.
+    var grid = document.querySelector("[data-file-drop]");
+    if (grid) acceptFiles(grid, "is-file-drop");
+
+    // Explicit browse buttons, since a compact bar has no big click surface.
+    document.querySelectorAll("[data-browse]").forEach(function (b) {
+      b.addEventListener("click", function (e) { e.stopPropagation(); openPicker(); });
     });
     input.addEventListener("change", function () {
       if (input.files && input.files.length) submitUpload(input.files.length);

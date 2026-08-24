@@ -3,7 +3,7 @@
 {% block page_title %}Photos{% endblock %}
 
 {% block content %}
-<form class="dropzone" id="dropzone" method="post"
+<form class="dropzone {{ 'is-compact' if photos }}" id="dropzone" method="post"
       action="{{ url_for('admin.photos_upload') }}" enctype="multipart/form-data">
   <input type="file" name="photos" id="fileInput" accept="image/*" multiple hidden>
   {#
@@ -40,12 +40,15 @@
     </select>
     {% endif %}
     <input type="text" name="tags" class="dz-tags" placeholder="Tags (comma-separated)">
+    {% if photos %}<button type="button" class="linklike" data-browse>browse…</button>{% endif %}
   </div>
+  {% if not photos %}
   <div class="dropzone-inner">
     <p class="dropzone-title">Drop photos here</p>
     {% if up_target %}<p class="dropzone-target">→ {{ up_target }}</p>{% endif %}
-    <p class="dropzone-sub">or <button type="button" class="linklike" id="browseBtn">browse your files</button> · JPG, PNG, WebP, TIFF</p>
+    <p class="dropzone-sub">or <button type="button" class="linklike" id="browseBtn" data-browse>browse your files</button> · JPG, PNG, WebP, TIFF</p>
   </div>
+  {% endif %}
   <div class="dropzone-status" id="dzStatus" hidden></div>
 </form>
 
@@ -177,7 +180,9 @@
     </form>
     {% endif %}
     <p class="reorder-hint muted small">Click photos to select · drag onto a category in the tree to file · drag to reorder · ★ feature · eye shows/hides.</p>
-    <div class="photo-grid" id="photoGrid" data-reorder-url="{{ url_for('admin.photos_reorder') }}" data-drag-item=".photo-tile" data-drag-kind="photo" data-reorder-lock="0">
+    <div class="photo-grid" id="photoGrid" data-file-drop
+         data-drop-label="{{ ('Drop to add to ' ~ up_target) if up_target else 'Drop to add photos' }}"
+         data-reorder-url="{{ url_for('admin.photos_reorder') }}" data-drag-item=".photo-tile" data-drag-kind="photo" data-reorder-lock="0">
       {% for p in photos %}
       <div class="photo-tile {{ 'is-hidden' if not p.published }}" draggable="true" data-id="{{ p.id }}">
         <div class="photo-tile-img">
