@@ -86,6 +86,11 @@ body.admin { background: var(--bg-soft); }
 
 .reorder-hint { margin: 0 0 16px; }
 
+/* Names the album an upload will land in, under the dropzone title. */
+.dropzone-target {
+  margin: 6px 0 0; font-size: .9rem; font-weight: 500; color: var(--ink-2);
+}
+
 /* One-click orderings, shown only inside a single album. */
 .sort-bar {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px;

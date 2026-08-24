@@ -6,16 +6,36 @@
 <form class="dropzone" id="dropzone" method="post"
       action="{{ url_for('admin.photos_upload') }}" enctype="multipart/form-data">
   <input type="file" name="photos" id="fileInput" accept="image/*" multiple hidden>
+  {#
+    Uploads default to whichever album is open, so dropping files into a
+    category or subcategory view files them there without touching the
+    selects. They stay editable, for the case where you want to drop
+    somewhere other than where you are standing.
+  #}
+  {%- set up_cat = active.cat if active.cat else (active_album.category_id if active.sub and active_album else None) -%}
+  {%- set up_sub = active.sub -%}
+  {%- set up_parent = (categories | selectattr('id', 'equalto', up_cat) | first) if up_cat else None -%}
+  {%- if active.sub and active_album and up_parent -%}
+    {%- set up_target = up_parent.name ~ ' › ' ~ active_album.name -%}
+  {%- elif active.cat and active_album -%}
+    {%- set up_target = active_album.name -%}
+  {%- elif active.uncat -%}
+    {%- set up_target = 'Uncategorized' -%}
+  {%- else -%}
+    {%- set up_target = None -%}
+  {%- endif %}
   <div class="dz-controls">
-    <span class="dz-controls-label muted small">Assign this batch (optional):</span>
+    <span class="dz-controls-label muted small">
+      {{- 'Filing into (change if needed):' if up_target else 'Assign this batch (optional):' -}}
+    </span>
     {% if categories %}
     <select name="category_id" id="upCat">
       <option value="">— Uncategorized —</option>
       {% for c in categories %}
-      <option value="{{ c.id }}">{{ c.name }}{{ ' (hidden)' if not c.published }}</option>
+      <option value="{{ c.id }}" {{ 'selected' if up_cat == c.id }}>{{ c.name }}{{ ' (hidden)' if not c.published }}</option>
       {% endfor %}
     </select>
-    <select name="subcategory_id" id="upSub" data-subselect="upCat" data-current="">
+    <select name="subcategory_id" id="upSub" data-subselect="upCat" data-current="{{ up_sub or '' }}">
       <option value="">— None —</option>
     </select>
     {% endif %}
@@ -23,6 +43,7 @@
   </div>
   <div class="dropzone-inner">
     <p class="dropzone-title">Drop photos here</p>
+    {% if up_target %}<p class="dropzone-target">→ {{ up_target }}</p>{% endif %}
     <p class="dropzone-sub">or <button type="button" class="linklike" id="browseBtn">browse your files</button> · JPG, PNG, WebP, TIFF</p>
   </div>
   <div class="dropzone-status" id="dzStatus" hidden></div>
