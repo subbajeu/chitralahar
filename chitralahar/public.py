@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import tempfile
+import time
 import zipfile
 from pathlib import Path
 
@@ -350,8 +351,15 @@ def contact():
         name = (request.form.get("name") or "").strip()[:200]
         email = (request.form.get("email") or "").strip()[:200]
         body = (request.form.get("message") or "").strip()[:5000]
-        # honeypot: real users never fill "website"; bots do. Pretend success.
-        if request.form.get("website") or too_many("contact:" + ip, max_attempts=5, window=3600):
+        # Spam checks, all pretend-success so bots can't learn what tripped them:
+        # honeypot ("website" filled), no-JS bots ("js_check" empty — JS fills it
+        # on page load), time trap (submitted < 3s after the form was rendered),
+        # and the per-IP rate limit.
+        rendered_at = session.get("contact_ts", 0)
+        if (request.form.get("website")
+                or not request.form.get("js_check")
+                or (rendered_at and time.time() - rendered_at < 3)
+                or too_many("contact:" + ip, max_attempts=5, window=3600)):
             flash("Thanks — your message has been sent.", "success")
             return redirect(url_for("public.contact"))
         if not body or not (name or email):
@@ -363,6 +371,7 @@ def contact():
             db.commit()
             flash("Thanks — your message has been sent.", "success")
             return redirect(url_for("public.contact"))
+    session["contact_ts"] = time.time()  # for the time trap above
     page = db.execute("SELECT * FROM pages WHERE slug = 'contact'").fetchone()
     return render_template("public/contact.html", page=page)
 
