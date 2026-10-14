@@ -363,7 +363,17 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); }
   max-width: 92vw; max-height: 84vh; width: auto; object-fit: contain;
   border-radius: var(--radius); box-shadow: var(--shadow-lg);
   transition: opacity .2s var(--ease); background: #fff;
+  cursor: zoom-in;
 }
+/* Zoomed: the photo at its full pixel size, pan by scrolling. */
+.lightbox.is-zoomed { overflow: auto; }
+.lightbox.is-zoomed .lb-stage { margin: auto; max-width: none; }
+.lightbox.is-zoomed .lb-img { max-width: none; max-height: none; border-radius: 0; cursor: zoom-out; }
+/* Slideshow: dark room (fullscreen is requested by main.js where supported). */
+.lightbox.lb-dark { background: rgba(0, 0, 0, .99); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.lightbox.lb-dark .lb-cap { color: rgba(255, 255, 255, .72); }
+.lightbox.lb-dark .lb-btn { background: rgba(34, 34, 34, .8); border-color: rgba(255, 255, 255, .16); color: #eee; }
+.lightbox.lb-dark .lb-img { background: transparent; box-shadow: none; }
 .lb-img.is-loading { opacity: .35; }
 .lb-cap { font-size: .9rem; color: var(--ink-2); text-align: center; max-width: 70ch; min-height: 1.2em; }
 .lb-btn {

@@ -48,6 +48,7 @@
   var idx = 0;
 
   function show(i) {
+    lb.classList.remove("is-zoomed");
     idx = (i + links.length) % links.length;
     var a = links[idx];
     var full = a.getAttribute("data-full");
@@ -86,12 +87,20 @@
   function stopShow() {
     if (slideTimer) { clearInterval(slideTimer); slideTimer = null; }
     if (playBtn) { playBtn.classList.remove("playing"); playBtn.setAttribute("aria-label", "Play slideshow"); }
+    lb.classList.remove("lb-dark");
+    if (document.fullscreenElement === lb) document.exitFullscreen().catch(function () {});
+    else if (document.webkitFullscreenElement === lb) document.webkitExitFullscreen();
   }
   function startShow() {
     if (links.length < 2) return;
     if (slideTimer) clearInterval(slideTimer);
     if (playBtn) { playBtn.classList.add("playing"); playBtn.setAttribute("aria-label", "Pause slideshow"); }
     slideTimer = setInterval(function () { show(idx + 1); }, SLIDE_DELAY);
+    // Dark room + real fullscreen where the browser allows it (iPhones don't;
+    // there the fixed, darkened lightbox already fills the screen).
+    lb.classList.add("lb-dark");
+    if (lb.requestFullscreen) lb.requestFullscreen().catch(function () {});
+    else if (lb.webkitRequestFullscreen) lb.webkitRequestFullscreen();
   }
   function toggleShow() { if (slideTimer) stopShow(); else startShow(); }
   function nav(i) { show(i); if (slideTimer) startShow(); }  // manual move keeps the rhythm
@@ -101,6 +110,15 @@
       e.preventDefault();
       open(i);
     });
+  });
+
+  // Click / tap the photo: toggle between fitted and full pixel size.
+  img.addEventListener("click", function () {
+    if (!lb.classList.contains("is-zoomed") && img.naturalWidth <= img.clientWidth) return;
+    if (lb.classList.toggle("is-zoomed")) {
+      lb.scrollLeft = (lb.scrollWidth - lb.clientWidth) / 2;
+      lb.scrollTop = (lb.scrollHeight - lb.clientHeight) / 2;
+    }
   });
 
   lb.addEventListener("click", function (e) {
@@ -127,6 +145,7 @@
     startX = e.changedTouches[0].clientX;
   }, { passive: true });
   lb.addEventListener("touchend", function (e) {
+    if (lb.classList.contains("is-zoomed")) return;  // panning, not swiping
     var dx = e.changedTouches[0].clientX - startX;
     if (Math.abs(dx) > 50) nav(idx + (dx < 0 ? 1 : -1));
   }, { passive: true });
