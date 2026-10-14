@@ -335,6 +335,31 @@ def init_db_command():
     click.echo("Initialized the Chitralahar database.")
 
 
+@click.command("reset-password")
+@click.argument("username")
+@click.option("--clear-2fa", is_flag=True, help="Also turn off two-factor authentication.")
+def reset_password_command(username, clear_2fa):
+    """Set a new password for USERNAME. Run this on the server when locked out."""
+    from werkzeug.security import generate_password_hash
+
+    db = get_db()
+    user = db.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()
+    if user is None:
+        raise click.ClickException(f"No user named {username!r}.")
+    password = click.prompt("New password", hide_input=True, confirmation_prompt=True)
+    if len(password) < 8:
+        raise click.ClickException("Password must be at least 8 characters.")
+    db.execute(
+        "UPDATE users SET password_hash = ? WHERE id = ?",
+        (generate_password_hash(password, method="pbkdf2:sha256"), user["id"]),
+    )
+    if clear_2fa:
+        db.execute("UPDATE users SET totp_secret = '', totp_counter = 0 WHERE id = ?", (user["id"],))
+    db.commit()
+    click.echo(f"Password reset for {username}." + (" 2FA turned off." if clear_2fa else ""))
+
+
 def init_app(app):
     app.teardown_appcontext(close_db)
     app.cli.add_command(init_db_command)
+    app.cli.add_command(reset_password_command)

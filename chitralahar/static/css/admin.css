@@ -184,6 +184,16 @@ body.admin { background: var(--bg-soft); }
 .checkbox.big { font-size: 1rem; }
 .checkbox.small-check { font-size: .85rem; font-weight: 400; color: var(--ink-2); margin: 10px 0; }
 .form-actions { display: flex; gap: 10px; align-items: center; margin-top: 4px; }
+.pw-wrap { position: relative; display: block; }
+.form-stack label .pw-wrap, .field-group label .pw-wrap { margin-top: 7px; }
+.form-stack label .pw-wrap input, .field-group label .pw-wrap input { margin-top: 0; width: 100%; padding-right: 42px; }
+.pw-eye {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: var(--radius);
+  color: var(--ink-3); background: none; border: none; cursor: pointer; padding: 0;
+}
+.pw-eye:hover { color: var(--ink); }
 
 /* ---------------- Photo edit split ---------------- */
 .edit-split { display: grid; grid-template-columns: 1.1fr 1fr; gap: 32px; align-items: start; }
