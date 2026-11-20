@@ -422,7 +422,7 @@
         e.stopPropagation();
         if (!e.dataTransfer.files.length) return;
         try { input.files = e.dataTransfer.files; } catch (_) {}
-        submitUpload(e.dataTransfer.files.length);
+        submitUpload(e.dataTransfer.files);
       });
     }
 
@@ -436,29 +436,67 @@
       b.addEventListener("click", function (e) { e.stopPropagation(); openPicker(); });
     });
     input.addEventListener("change", function () {
-      if (input.files && input.files.length) submitUpload(input.files.length);
+      if (input.files && input.files.length) submitUpload(input.files);
     });
-    function submitUpload(count) {
-      var label = count + " photo" + (count !== 1 ? "s" : "");
+    // Upload in small batches: one giant request for hundreds of photos blows
+    // past the server's per-request time limit and loses everything.
+    var BATCH_SIZE = 12;
+    function submitUpload(fileList) {
+      var files = Array.prototype.slice.call(fileList);
+      var label = files.length + " photo" + (files.length !== 1 ? "s" : "");
       if (status) {
         status.hidden = false;
         status.innerHTML = 'Uploading ' + label + '… <span class="dz-pct">0%</span>' +
           '<span class="dz-bar"><span class="dz-bar-fill"></span></span>';
       }
       dz.classList.add("is-uploading");
-      // XHR (not fetch) so we get upload progress events.
-      var xhr = new XMLHttpRequest();
-      xhr.open("POST", dz.action);
-      xhr.upload.addEventListener("progress", function (e) {
-        if (!e.lengthComputable || !status) return;
-        var pct = Math.round((e.loaded / e.total) * 100);
+
+      var batches = [];
+      for (var i = 0; i < files.length; i += BATCH_SIZE) batches.push(files.slice(i, i + BATCH_SIZE));
+      var totalBytes = files.reduce(function (s, f) { return s + f.size; }, 0) || 1;
+      var doneBytes = 0, failed = 0, bi = 0;
+
+      function setPct(loaded) {
+        if (!status) return;
+        var pct = Math.min(100, Math.round(((doneBytes + loaded) / totalBytes) * 100));
         var fill = status.querySelector(".dz-bar-fill");
         var num = status.querySelector(".dz-pct");
         if (fill) fill.style.width = pct + "%";
-        if (num) num.textContent = pct < 100 ? pct + "%" : "processing…";
-      });
-      xhr.onload = xhr.onerror = function () { window.location.reload(); };
-      xhr.send(new FormData(dz));
+        if (num) num.textContent = pct < 100 ? pct + "%" : "finishing…";
+      }
+
+      function next() {
+        if (bi >= batches.length) {
+          if (failed) alert(failed + " photo" + (failed !== 1 ? "s" : "") + " failed to upload — drop them again.");
+          window.location.reload();
+          return;
+        }
+        var batch = batches[bi++];
+        var batchBytes = batch.reduce(function (s, f) { return s + f.size; }, 0);
+        var fd = new FormData(dz);
+        fd.delete("photos");
+        batch.forEach(function (f) { fd.append("photos", f, f.name); });
+        // XHR (not fetch) so we get upload progress events.
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", dz.action);
+        xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+        xhr.upload.addEventListener("progress", function (e) {
+          if (e.lengthComputable) setPct(e.loaded);
+        });
+        xhr.onload = function () {
+          if (xhr.status >= 400) failed += batch.length;
+          doneBytes += batchBytes;
+          setPct(0);
+          next();
+        };
+        xhr.onerror = function () {
+          failed += batch.length;
+          doneBytes += batchBytes;
+          next();
+        };
+        xhr.send(fd);
+      }
+      next();
     }
   }
 

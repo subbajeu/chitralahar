@@ -319,7 +319,14 @@ def photos_upload():
             set_photo_tags(db, pid, tags_raw)
         order -= 1
         saved += 1
+        # Commit per photo: if the request dies mid-batch (timeout, crash),
+        # everything processed so far stays saved instead of rolling back.
+        db.commit()
     db.commit()
+
+    # Batched JS uploads don't want a flash per batch stacking up on reload.
+    if request.headers.get("X-Requested-With"):
+        return ("", 204)
 
     if saved:
         flash(
