@@ -98,6 +98,9 @@
     bar.hidden = selected.size === 0;
     var c = document.getElementById("selCount");
     if (c) c.textContent = selected.size + " selected";
+    var all = document.getElementById("selAll");
+    if (all) all.style.display =
+      selected.size && selected.size === document.querySelectorAll("#photoGrid .photo-tile").length ? "none" : "";
   }
 
   /* ----- Photo multi-select (click the image) ----- */
