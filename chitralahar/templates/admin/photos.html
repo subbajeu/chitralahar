@@ -135,9 +135,9 @@
   {% endif %}
 
   <div class="photos-main">
-    {% if browse_cats %}
     <div class="sel-bar" id="selBar" hidden>
       <span class="sel-count" id="selCount">0 selected</span>
+      {% if browse_cats %}
       <label class="sel-assign">Assign to
         <select id="selAssign">
           <option value="">— choose —</option>
@@ -150,9 +150,11 @@
           {% endfor %}
         </select>
       </label>
+      {% endif %}
       <button type="button" class="linklike" id="selClear">Clear</button>
+      <button type="button" class="btn btn-sm sel-delete" id="selDelete"
+              data-url="{{ url_for('admin.photos_delete') }}">Delete selected</button>
     </div>
-    {% endif %}
 
     {% if photos %}
     {% if filtered %}
@@ -168,7 +170,8 @@
     {% endif %}
     <div class="upload-bar">
       <button type="button" class="btn btn-sm btn-primary" data-browse>＋ Add photos</button>
-      <span class="muted small">or drop images anywhere below{{ (' — they go to ' ~ up_target) if up_target else '' }} · click to select · drag to reorder · ★ feature · eye shows/hides.</span>
+      <button type="button" class="btn btn-sm" id="selAll">Select all</button>
+      <span class="muted small">or drop images anywhere below{{ (' — they go to ' ~ up_target) if up_target else '' }} · click to select · shift-click for a range · drag to reorder · ★ feature · eye shows/hides.</span>
     </div>
     <div class="photo-grid" id="photoGrid" data-file-drop
          data-drop-label="{{ ('Drop to add to ' ~ up_target) if up_target else 'Drop to add photos' }}"

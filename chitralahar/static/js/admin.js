@@ -107,10 +107,41 @@
     if (e.target.closest(".toggle-btn") || e.target.closest("a")) return;
     var tile = imgWrap.closest(".photo-tile");
     if (!tile) return;
-    var id = tile.dataset.id;
-    if (selected.has(id)) { selected.delete(id); tile.classList.remove("selected"); }
-    else { selected.add(id); tile.classList.add("selected"); }
+    if (e.shiftKey && lastTile && lastTile.isConnected) {
+      var tiles = Array.from(tile.parentNode.querySelectorAll(".photo-tile"));
+      var a = tiles.indexOf(lastTile), b = tiles.indexOf(tile);
+      tiles.slice(Math.min(a, b), Math.max(a, b) + 1).forEach(function (t) { setSelected(t, true); });
+      window.getSelection().removeAllRanges();
+    } else {
+      setSelected(tile, !selected.has(tile.dataset.id));
+    }
+    lastTile = tile;
     updateSelBar();
+  });
+
+  var lastTile = null;
+  function setSelected(tile, on) {
+    if (on) selected.add(tile.dataset.id); else selected.delete(tile.dataset.id);
+    tile.classList.toggle("selected", on);
+  }
+
+  var selAll = document.getElementById("selAll");
+  if (selAll) selAll.addEventListener("click", function () {
+    document.querySelectorAll("#photoGrid .photo-tile").forEach(function (t) { setSelected(t, true); });
+    updateSelBar();
+  });
+
+  var selDelete = document.getElementById("selDelete");
+  if (selDelete) selDelete.addEventListener("click", function () {
+    var n = selected.size;
+    if (!n || !window.confirm("Permanently delete " + n + " photo" + (n === 1 ? "" : "s") + "? This can't be undone.")) return;
+    selDelete.disabled = true;
+    fetch(selDelete.dataset.url, {
+      method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin",
+      body: JSON.stringify({ ids: Array.from(selected) }),
+    })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); window.location.reload(); })
+      .catch(function () { selDelete.disabled = false; alert("Delete failed — nothing was removed. Try again."); });
   });
 
   var selClear = document.getElementById("selClear");

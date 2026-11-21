@@ -473,6 +473,7 @@ input[type=file]::file-selector-button:hover { border-color: var(--ink); }
 .sel-bar .sel-count { font-weight: 600; }
 .sel-bar label { color: #fff; font-size: .85rem; display: flex; align-items: center; gap: 8px; }
 .sel-bar select { width: auto; }
+.sel-bar .sel-delete { background: #b3261e; border-color: #b3261e; color: #fff; }
 .sel-bar .linklike { color: #fff; text-decoration: underline; margin-left: auto; }
 
 .promote-bar {

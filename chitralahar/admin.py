@@ -451,6 +451,29 @@ def photo_delete(photo_id):
     return redirect(url_for("admin.photos"))
 
 
+@bp.route("/photos/delete", methods=["POST"])
+@login_required
+def photos_delete():
+    db = get_db()
+    data = request.get_json(silent=True) or {}
+    rows = []
+    for raw in data.get("ids") or []:
+        try:
+            pid = int(raw)
+        except (TypeError, ValueError):
+            continue
+        p = db.execute("SELECT * FROM photos WHERE id = ?", (pid,)).fetchone()
+        if p is not None:
+            db.execute("DELETE FROM photos WHERE id = ?", (pid,))
+            rows.append(p)
+    db.commit()
+    # Files go only after the commit: a crash can leave orphans, never broken rows.
+    for p in rows:
+        delete_photo_files(p)
+    flash(f"{len(rows)} photo{'' if len(rows) == 1 else 's'} deleted.", "success")
+    return jsonify({"ok": True, "count": len(rows)})
+
+
 @bp.route("/photos/reorder", methods=["POST"])
 @login_required
 def photos_reorder():
