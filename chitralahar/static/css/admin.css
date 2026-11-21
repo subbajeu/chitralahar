@@ -130,6 +130,7 @@ body.admin { background: var(--bg-soft); }
 .photo-grid.is-file-drop > * { pointer-events: none; }
 
 .reorder-hint { margin: 0 0 16px; }
+.upload-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 16px; }
 
 /* Names the album an upload will land in, under the dropzone title. */
 .dropzone-target {

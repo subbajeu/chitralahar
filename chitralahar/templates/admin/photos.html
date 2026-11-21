@@ -166,7 +166,10 @@
       <button type="submit" name="key" value="reverse" class="btn btn-sm">Reverse</button>
     </form>
     {% endif %}
-    <p class="reorder-hint muted small">Drop images anywhere below to add them{{ (' to ' ~ up_target) if up_target else '' }} · or <button type="button" class="linklike" data-browse>browse</button> · click to select · drag to reorder · ★ feature · eye shows/hides.</p>
+    <div class="upload-bar">
+      <button type="button" class="btn btn-sm btn-primary" data-browse>＋ Add photos</button>
+      <span class="muted small">or drop images anywhere below{{ (' — they go to ' ~ up_target) if up_target else '' }} · click to select · drag to reorder · ★ feature · eye shows/hides.</span>
+    </div>
     <div class="photo-grid" id="photoGrid" data-file-drop
          data-drop-label="{{ ('Drop to add to ' ~ up_target) if up_target else 'Drop to add photos' }}"
          data-reorder-url="{{ url_for('admin.photos_reorder') }}" data-drag-item=".photo-tile" data-drag-kind="photo" data-reorder-lock="0">
