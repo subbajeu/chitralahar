@@ -97,6 +97,17 @@ def create_app(config_object=Config):
             "unread_messages": unread,
         }
 
+    # Apache serves static files with no Cache-Control, so browsers may reuse old
+    # CSS/JS after a deploy unless the URL changes with the file.
+    @app.url_defaults
+    def _version_assets(endpoint, values):
+        name = values.get("filename", "")
+        if endpoint == "static" and name.endswith((".css", ".js")):
+            try:
+                values["v"] = int(os.path.getmtime(os.path.join(app.static_folder, name)))
+            except OSError:
+                pass
+
     # Security response headers (applied to every response).
     @app.after_request
     def _security_headers(resp):
